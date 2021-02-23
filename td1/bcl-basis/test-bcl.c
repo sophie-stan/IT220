@@ -56,7 +56,7 @@ void process(const size_t rows, const size_t cols) {
     }
     pnm_save(imd, PnmRawPpm, "c.ppm");
 
-    /* Extract a specified channel from a pnm image and copy it to buffer. If the buffer
+    /* Extracts a specified channel from a pnm image and copy it to buffer. If the buffer
     * parameter is NULL, the memory is dynamically allocated (and should be freed) */
     unsigned short* channel = pnm_get_channel(imd, NULL, 1);
     for (size_t i = 0; i < rows * cols; i++) channel[i] = 0;

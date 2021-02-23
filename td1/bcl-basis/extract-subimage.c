@@ -18,21 +18,23 @@ void
 process(const int i, const int j, const size_t rows, const size_t cols,
         char* in, char* out) {
 
-    /* Prepares the result */
+    /* Filling a white template with the right dimensions */
     pnm imd = pnm_new(cols, rows, PnmRawPpm);
     unsigned short* data = pnm_get_image(imd);
-    unsigned short* p = data; // another pointer on the image
+    unsigned short* p = data;
     size_t size = rows * cols * 3;
     while (size--) *p++ = pnm_maxval;
 
+    /* Loading the input image */
     pnm ims = pnm_load(in);
     int prev_cols = pnm_get_width(ims);
     int prev_rows = pnm_get_height(ims);
-    int min_cols = min(prev_cols - i, cols);
-    int min_rows = min(prev_rows - j, rows);
+    /* If i + cols or j + rows are bigger than the cols and rows of the input image */
+    int max_cols = min(prev_cols - i, cols);
+    int max_rows = min(prev_rows - j, rows);
 
-    for (int i1 = 0; i1 < min_rows; i1++) {
-        for (int j1 = 0; j1 < min_cols; j1++) {
+    for (int i1 = 0; i1 < max_rows; i1++) {
+        for (int j1 = 0; j1 < max_cols; j1++) {
             for (int k = 0; k < 3; k++) {
                 const unsigned short val = pnm_get_component(ims, i + i1, j + j1, k);
                 pnm_set_component(imd, i1, j1, k, val);

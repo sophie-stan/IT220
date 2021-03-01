@@ -2,9 +2,6 @@
 #include <stdio.h>
 #include <pnm.h>
 
-int min(int a, int b) {
-    return a < b ? a : b;
-}
 int max(int a, int b) {
     return a > b ? a : b;
 }
@@ -22,8 +19,8 @@ void one_process(int dx, int dy, pnm ims, pnm imd) {
     /* Computing the coordinates of the leftmost and highest point of ims
      * where the piece of image is truncated.
      * */
-    int ims_i = abs(min(0, dy));
-    int ims_j = abs(min(0, dx));
+    int ims_i = max(0, -dy);
+    int ims_j = max(0, -dx);
     /*
      * Computing the coordinates of the leftmost and highest point of imd
      * where the piece of image begins.

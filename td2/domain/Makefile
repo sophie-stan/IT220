@@ -1,13 +1,15 @@
 ROOT = ../bcl
 
 CPPFLAGS = -I$(ROOT)/include -I.
-CFLAGS   = -Wall -Wextra -Werror -std=c99 
+CFLAGS   = -Wall -Wextra -std=c99 -Werror 
 LDFLAGS  = -L$(ROOT)/lib 
 LDLIBS   = -lbcl -lm
 
 BIN = \
 	move\
-	shear
+	shear\
+	scroll\
+
 
 .PHONY: all
 all: $(BIN)
@@ -18,4 +20,4 @@ shear: domain.o
 clean:
 	$(RM) *.o 
 cleanall: clean
-	$(RM) $(BIN)
+	$(RM) $(BIN) *.ppm

@@ -9,6 +9,7 @@ BIN = \
 	move\
 	shear\
 	scroll\
+	flip
 
 
 .PHONY: all

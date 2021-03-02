@@ -5,9 +5,6 @@
 int max(int a, int b) {
     return a > b ? a : b;
 }
-int abs(int a) {
-    return a >= 0 ? a : -a;
-}
 
 void one_process(int dx, int dy, pnm ims, pnm imd) {
     /* Computing the size of the piece of image */

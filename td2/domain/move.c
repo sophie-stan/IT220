@@ -5,9 +5,6 @@
 int max(int a, int b) {
     return a > b ? a : b;
 }
-int abs(int a) {
-    return a >= 0 ? a : -a;
-}
 
 void process(int dx, int dy, char* ims_name, char* imd_name) {
     pnm ims = pnm_load(ims_name);

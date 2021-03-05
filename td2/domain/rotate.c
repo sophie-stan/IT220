@@ -22,10 +22,17 @@ void process(int x_0, int y_0, float angle, char* ims_name, char* imd_name) {
     }
     pnm imd = pnm_new(cols, rows, PnmRawPpm);
 
-    for (int i_bis = 0; i_bis < rows; i_bis ++) {
-        for (int j_bis = 0; j_bis < cols; j_bis ++) {
-            for (int k = 0; k < 3; k ++) {
-
+    // Running through imd, the ouput (x' y')
+    for (int y_bis = 0; y_bis < rows; y_bis++) {
+        for (int x_bis = 0; x_bis < cols; x_bis++) {
+            for (int k = 0; k < 3; k++) {
+                unsigned short value;
+                float x = x_0 + cos(radian) * (x_bis - x_0) -
+                          sin(radian) * (y_bis - y_0);
+                float y = y_0 + cos(radian) * (y_bis - y_0) +
+                          sin(radian) * (x_bis - x_0);
+                value = bilinear_interpolation(x, y, ims, k);
+                pnm_set_component(imd, y_bis, x_bis, k, value);
             }
         }
     }

@@ -12,6 +12,7 @@ BIN = \
 	flip\
 	rotate\
 	wave\
+	sphere\
 
 .PHONY: all
 all: $(BIN)
@@ -21,6 +22,8 @@ shear: domain.o
 rotate: domain.o
 
 wave: domain.o
+
+sphere: domain.o
 
 test-shear: shear
 	./shear h 30 ../data/pepper.ppm a.ppm && pvisu a.ppm;

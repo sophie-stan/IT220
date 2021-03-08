@@ -22,11 +22,34 @@ float RGB2LMS[D][D] = {
   {0.0241, 0.1288, 0.8444}
 };
 
+float LMS2RGB[D][D] = {
+  {4.4679, -3.5873, 0.1193}, 
+  {-1.2186, 2.3809, -0.1624},  
+  {0.0497, -0.2439, 1.2045}
+};
+
+void rgb2lalphabeta(){
+
+}
+
+void lalphabeta2rgb(){
+
+}
+
+
 void
-process(char *ims, char *imt, char* imd){
-  (void) ims;
-  (void) imt;
-  (void) imd;
+process(char *ims_name, char *imt_name, char* imd_name){
+    pnm ims = pnm_load(ims_name);
+    int rows_ims = pnm_get_height(ims);
+    int cols_ims = pnm_get_width(ims);
+    
+    pnm imt = pnm_load(imt_name);
+    int rows_imt = pnm_get_height(imt);
+    int cols_imt = pnm_get_width(imt);
+    
+    pnm imd = pnm_new(rows_ims, cols_ims, PnmRawPpm);
+
+
 
 }
 

@@ -64,31 +64,25 @@ process(char* ims_name, char* imt_name, char* imd_name) {
     int cols_ims = pnm_get_width(ims);
 
 
-    int*** data = (int***)malloc(rows_ims * sizeof(int*)); //of size rows x cols
-    for(int i = 0; i < rows_ims; i++) {
-        data[i] = (int**)malloc(cols_ims * sizeof(int*));
-    }
-    for (int i = 0; i < rows_ims; i++) {
-        for (int j = 0; j < cols_ims; j ++) {
-            data[i][j] = (int*)malloc(3 * sizeof(int));
-        }
-    }
+    int*** data = (int***) malloc(rows_ims * sizeof(int*));
     //float* ims_data = malloc(sizeof(float) * rows_ims * cols_ims * 3);
     //float (* ims_col)[rows_ims] = (float (*)[rows_ims]) ims_data;
 
     for (int i = 0; i < rows_ims; i++) {
-        for (int j = 0; j < cols_ims; j ++) {
-            for (int k = 0; k < 3; k ++) {
+        data[i] = (int**) malloc(cols_ims * sizeof(int*));
+        for (int j = 0; j < cols_ims; j++) {
+            data[i][j] = (int*) malloc(3 * sizeof(int));
+            for (int k = 0; k < 3; k++) {
                 data[i][j][k] = 0;
             }
         }
     }
+
+
     for (int i = 0; i < rows_ims; i++) {
-        for (int j = 0; j < cols_ims; j ++) {
+        for (int j = 0; j < cols_ims; j++) {
             free(data[i][j]);
         }
-    }
-    for (int i = 0; i < rows_ims; i ++) {
         free(data[i]);
     }
     free(data);

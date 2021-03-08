@@ -17,28 +17,29 @@
 #define D 3
 
 float RGB2LMS[D][D] = {
-  {0.3811, 0.5783, 0.0402}, 
-  {0.1967, 0.7244, 0.0782},  
-  {0.0241, 0.1288, 0.8444}
+        {0.3811, 0.5783, 0.0402},
+        {0.1967, 0.7244, 0.0782},
+        {0.0241, 0.1288, 0.8444}
 };
 
 float LMS2RGB[D][D] = {
-  {4.4679, -3.5873, 0.1193}, 
-  {-1.2186, 2.3809, -0.1624},  
-  {0.0497, -0.2439, 1.2045}
+        {4.4679,  -3.5873, 0.1193},
+        {-1.2186, 2.3809,  -0.1624},
+        {0.0497,  -0.2439, 1.2045}
 };
 
 float RGB2LAB[D][D] = {
-  {0.5774, 0.5774, 0.5774}, 
-  {0.4082, 0.4082, -0.8165},  
-  {0.7071, -0.7071, 0}
+        {0.5774, 0.5774,  0.5774},
+        {0.4082, 0.4082,  -0.8165},
+        {0.7071, -0.7071, 0}
 };
 
 float LAB2RGB[D][D] = {
-  {0.5774, 0.4082, 0.7071}, 
-  {0.5774, 0.4082, -0.7071},  
-  {0.5774, -0.8165, 0}
+        {0.5774, 0.4082,  0.7071},
+        {0.5774, 0.4082,  -0.7071},
+        {0.5774, -0.8165, 0}
 };
+
 /*
 void rgb2lab(void *** ims, int rows_ims, int cols_ims){
 
@@ -57,46 +58,54 @@ void lab2rgb(pnm ims){
 */
 
 void
-process(char *ims_name, char *imt_name, char* imd_name){
+process(char* ims_name, char* imt_name, char* imd_name) {
     pnm ims = pnm_load(ims_name);
     int rows_ims = pnm_get_height(ims);
     int cols_ims = pnm_get_width(ims);
 
-    float * ims_data = malloc(sizeof(float)*rows_ims*cols_ims*3);
-    float (* ims_col)[rows_ims] = (float (*)[rows_ims]) ims_data;
-    float (*ims_tab)[cols_ims] = (float (*)[cols_ims])ims_col;
-    
-    /*
-    for(int i = 0 ; i < rows_ims ; i++){
-        for(int j = 0 ; j < cols_ims ; j++){
-            for()
-            ims_tab[i][j][k] = 0;
+
+    int*** data = (int***)malloc(rows_ims * sizeof(int*)); //of size rows x cols
+    for(int i = 0; i < rows_ims; i++) {
+        data[i] = (int**)malloc(cols_ims * sizeof(int*));
+    }
+    for (int i = 0; i < rows_ims; i++) {
+        for (int j = 0; j < cols_ims; j ++) {
+            data[i][j] = (int*)malloc(3 * sizeof(int));
         }
     }
+    //float* ims_data = malloc(sizeof(float) * rows_ims * cols_ims * 3);
+    //float (* ims_col)[rows_ims] = (float (*)[rows_ims]) ims_data;
 
-
-    //rgb2lab(ims_data, rows_ims, cols_ims);
-    
-    pnm imt = pnm_load(imt_name);
-    int rows_imt = pnm_get_height(imt);
-    int cols_imt = pnm_get_width(imt);
-    
-    pnm imd = pnm_new(rows_imt, cols_imt, PnmRawPpm);
-    */
-    free(ims_data);
-
+    for (int i = 0; i < rows_ims; i++) {
+        for (int j = 0; j < cols_ims; j ++) {
+            for (int k = 0; k < 3; k ++) {
+                data[i][j][k] = 0;
+            }
+        }
+    }
+    for (int i = 0; i < rows_ims; i++) {
+        for (int j = 0; j < cols_ims; j ++) {
+            free(data[i][j]);
+        }
+    }
+    for (int i = 0; i < rows_ims; i ++) {
+        free(data[i]);
+    }
+    free(data);
+    pnm_free(ims);
 }
 
 void
-usage (char *s){
-  fprintf(stderr, "Usage: %s <ims> <imt> <imd> \n", s);
-  exit(EXIT_FAILURE);
+usage(char* s) {
+    fprintf(stderr, "Usage: %s <ims> <imt> <imd> \n", s);
+    exit(EXIT_FAILURE);
 }
 
 #define PARAM 3
+
 int
-main(int argc, char *argv[]){
-  if (argc != PARAM+1) usage(argv[0]);
-  process(argv[1], argv[2], argv[3]);
-  return EXIT_SUCCESS;
+main(int argc, char* argv[]) {
+    if (argc != PARAM + 1) usage(argv[0]);
+    process(argv[1], argv[2], argv[3]);
+    return EXIT_SUCCESS;
 }

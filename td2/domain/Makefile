@@ -48,6 +48,8 @@ test-wave: wave
 	./wave 128 20 1 1 ../data/lena-color.ppm b.ppm && pvisu b.ppm;
 	./wave 1 1 128 20 ../data/lena-color.ppm c.ppm && pvisu c.ppm;
 
+test-sphere: sphere
+	./sphere ../data/earth.ppm a.ppm && pvisu a.ppm
 
 .PHONY: clean cleanall
 clean:

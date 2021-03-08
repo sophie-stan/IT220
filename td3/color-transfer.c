@@ -28,28 +28,62 @@ float LMS2RGB[D][D] = {
   {0.0497, -0.2439, 1.2045}
 };
 
-void rgb2lalphabeta(){
+float RGB2LAB[D][D] = {
+  {0.5774, 0.5774, 0.5774}, 
+  {0.4082, 0.4082, -0.8165},  
+  {0.7071, -0.7071, 0}
+};
 
+float LAB2RGB[D][D] = {
+  {0.5774, 0.4082, 0.7071}, 
+  {0.5774, 0.4082, -0.7071},  
+  {0.5774, -0.8165, 0}
+};
+/*
+void rgb2lab(void *** ims, int rows_ims, int cols_ims){
+
+    for(int i = 0 ; i < rows_ims ; i++){
+        for(int j = 0 ; j < cols_ims ; j++){
+            for(int k = 0 ; 1 < 3 ; k++){
+                ims[i][j][k] = 0;
+            }
+        }
+    }   
 }
 
-void lalphabeta2rgb(){
-
+void lab2rgb(pnm ims){
+    ims;
 }
-
+*/
 
 void
 process(char *ims_name, char *imt_name, char* imd_name){
     pnm ims = pnm_load(ims_name);
     int rows_ims = pnm_get_height(ims);
     int cols_ims = pnm_get_width(ims);
+
+    float * ims_data = malloc(sizeof(float)*rows_ims*cols_ims*3);
+    float (* ims_col)[rows_ims] = (float (*)[rows_ims]) ims_data;
+    float (*ims_tab)[cols_ims] = (float (*)[cols_ims])ims_col;
+    
+    /*
+    for(int i = 0 ; i < rows_ims ; i++){
+        for(int j = 0 ; j < cols_ims ; j++){
+            for()
+            ims_tab[i][j][k] = 0;
+        }
+    }
+
+
+    //rgb2lab(ims_data, rows_ims, cols_ims);
     
     pnm imt = pnm_load(imt_name);
     int rows_imt = pnm_get_height(imt);
     int cols_imt = pnm_get_width(imt);
     
-    pnm imd = pnm_new(rows_ims, cols_ims, PnmRawPpm);
-
-
+    pnm imd = pnm_new(rows_imt, cols_imt, PnmRawPpm);
+    */
+    free(ims_data);
 
 }
 

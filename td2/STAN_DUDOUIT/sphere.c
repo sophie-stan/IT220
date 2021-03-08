@@ -5,38 +5,55 @@
 
 #include "domain.h"
 
-#ifndef M_PI
-#    define M_PI 3.14159265358979323846
-#endif
-
+/* We are conscious that sphere should use abilinear interpolation and an inverse
+ * transformation. But we already had trouble finding the formula for ims to imd.
+ */
 
 void process(char* ims_name, char* imd_name) {
-
     pnm ims = pnm_load(ims_name);
-
     int rows = pnm_get_height(ims);
     int cols = pnm_get_width(ims);
-
     pnm imd = pnm_new(cols, rows, PnmRawPpm);
 
-    // Running through imd, the ouput (x' y')
-    for (int y_bis = 0; y_bis < rows; y_bis++) {
-        for (int x_bis = 0; x_bis < cols; x_bis++) {
-            for (int k = 0; k < 3; k++) {
-                unsigned short value;
-                /*
-                float longitude = asin(((float) x_bis)/((float) cols));
-                float latitude = asin(((float) y_bis)/((float) rows));
-                printf("longitude=%f,latitude=%f\n",longitude,latitude);
-                float x = (cols*longitude)/(2*M_PI);
-                float y = log(tan(M_PI/4.+latitude/2.));
-                printf("x=%f,y=%f\n",x,y);
-                */
-                float x = cols*sin((2.*M_PI*x_bis)/((float) cols));
-                float y = cols*sin(2*(atan(exp(y_bis)-M_PI/4.)));
+    int x, y;
+    unsigned short value;
+    double dist, ndist, angle, norm_i, norm_i2, norm_j, norm_j2, i_bis, j_bis;
 
-                value = bilinear_interpolation(x, y, ims, k);
-                pnm_set_component(imd, y_bis, x_bis, k, value);
+    /* Let us compute the squared norm on i and j for each points
+     * So that we can find the distance...
+     */
+    for (int i = 0; i < rows; i++) {
+        norm_i = ((i * 2.0) / rows) - 1.0;
+        norm_i2 = norm_i * norm_i;
+
+        for (int j = 0; j < cols; j++) {
+            norm_j = ((j * 2.0) / cols) - 1.0;
+            norm_j2 = norm_j * norm_j;
+
+            dist = sqrt(norm_i2 + norm_j2);
+
+            if (dist >= 0 && dist <= 1.0) {
+                ndist = (dist + (1.0 - sqrt(1.0 - dist * dist))) / 2.0;
+
+                if (ndist <= 1.0) {
+                    angle = atan2(norm_j, norm_i);
+                    /* Function atan2() takes two arguments: x-coordinate and
+                     * y-coordinate, and calculate the angle in radians for
+                     * the quadrant. (equivalent to tan-1(y/x))
+                     */
+                    i_bis = ndist * cos(angle);
+                    j_bis = ndist * sin(angle);
+
+                    x = ((i_bis + 1.0) * (rows - 1)) / 2.0;
+                    y = ((j_bis + 1.0) * (cols - 1)) / 2.0;
+
+                    if (x < rows && y < cols && x > 0 && y > 0) {
+                        for (int k = 0; k < 3; k ++) {
+                            value = pnm_get_component(ims, x, y, k);
+                            pnm_set_component(imd, i, j, k, value);
+                        }
+                    }
+                }
             }
         }
     }

@@ -123,27 +123,24 @@ float*** LMS_to_LAB(int rows, int cols, float*** lms) {
                     lab[i][j][k] = log(lab[i][j][k]);
                 }
             }
-            matrix_prod_channels(RGB2LMS, lms[i][j], lab[i][j]);
+            matrix_prod_channels(LMS2LAB, lms[i][j], lab[i][j]);
         }
     }
     return lab;
 }
 
-float*** LAB_to_LMS(int rows, int cols, float*** lms) {
-    float*** lab = malloc_img(rows, cols);
+// LAB to LMS
+float*** LAB_to_LMS(int rows, int cols, float*** lab) {
+    float*** lms = malloc_img(rows, cols);
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             for (int k = 0; k < 3; k++) {
-                if (lab[i][j][k] <= 0) {
-                    lab[i][j][k] = 0.0001;
-                } else {
-                    lab[i][j][k] = log(lab[i][j][k]);
-                }
+                pow(10, lms[i][j][k]);
             }
-            matrix_prod_channels(RGB2LMS, lms[i][j], lab[i][j]);
+            matrix_prod_channels(LAB2LMS, lab[i][j], lms[i][j]);
         }
     }
-    return lab;
+    return lms;
 }
 
 // Rounds all values of data + truncates if it is out of bound
@@ -168,40 +165,38 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     int cols_ims = pnm_get_width(ims);
     pnm imd = pnm_new(cols_ims, rows_ims, PnmRawPpm);
 
+    // Go
     float*** data_ims = malloc_img(rows_ims, cols_ims); // DA (1)
     fill_img(rows_ims, cols_ims, data_ims, ims);
 
     float*** data_ims_lms = RGB_to_LMS(rows_ims, cols_ims, data_ims); // DA (2)
     free_img(rows_ims, cols_ims, data_ims); // Memory free (1)
 
-    float*** data_ims_rgb = LMS_to_RGB(rows_ims, cols_ims, data_ims_lms); // DA (3)
+    float*** data_ims_lab = LMS_to_LAB(rows_ims, cols_ims, data_ims_lms); // DA (3)
     free_img(rows_ims, cols_ims, data_ims_lms); // Memory free (2)
-    
-    uniform(rows_ims, cols_ims, data_ims_rgb);
+
+    // Back
+    data_ims_lms = LAB_to_LMS(rows_ims, cols_ims, data_ims_lab); // DA (4)
+    free_img(rows_ims, cols_ims, data_ims_lab); // Memory free (3)
+
+    data_ims = LMS_to_RGB(rows_ims, cols_ims, data_ims_lms); // DA (5)
+    free_img(rows_ims, cols_ims, data_ims_lms); // Memory free (4)
+
+    uniform(rows_ims, cols_ims, data_ims);
+
+    // Check up after the long long travel of ims
     for (int i = 0; i < rows_ims; i++) {
         for (int j = 0; j < cols_ims; j++) {
             for (int k = 0; k < 3; k++) {
-                pnm_set_component(imd, i, j, k, data_ims_rgb[i][j][k]);
+                pnm_set_component(imd, i, j, k, data_ims[i][j][k]);
             }
         }
     }
 
 
-
-
-    /*
-    float*** data_ims_lab = LMS_to_LAB(rows_ims, cols_ims, data_ims_lms); // Dynamic allocation (3)
-    free_img(rows_ims, cols_ims, data_ims_lms); // Memory free (2)
-
-    free_img(rows_ims, cols_ims, data_ims_lab); // Memory free (3)
-    */
-
-
     pnm_save(imd, PnmRawPpm, imd_name);
     pnm_free(imd);
-    free_img(rows_ims, cols_ims, data_ims_rgb); // Memory free (3)
-
-
+    free_img(rows_ims, cols_ims, data_ims); // Memory free (5)
     pnm_free(ims);
 }
 

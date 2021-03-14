@@ -89,7 +89,7 @@ void matrix_prod_channels(float matrix[3][3], float input[3], float output[3]) {
     }
 }
 
-// Switch space
+// Switches input from space according to t
 float*** switch_space(int rows, int cols, float*** input, int t) {
     float*** output = malloc_3D_matrix(rows, cols);
     for (int i = 0; i < rows; i++) {
@@ -111,9 +111,6 @@ float*** switch_space(int rows, int cols, float*** input, int t) {
                 case 2: // LAB to LMS
                     matrix_prod_channels(LAB2LMS, input[i][j], output[i][j]);
                     for (int k = 0; k < 3; k++) {
-                        if (output[i][j][k] < 0) {
-                            output[i][j][k] = 0;
-                        }
                         output[i][j][k] = pow(10, output[i][j][k]);
                     }
                     break;
@@ -125,7 +122,7 @@ float*** switch_space(int rows, int cols, float*** input, int t) {
     return output;
 }
 
-// Computes the mean of the 3 channels of data, and stores it in the tab means
+// Computes the mean of the 3 channels of data, and stores it in the means tab
 void compute_means(int rows, int cols, float*** data, float* means) {
     int total_points = rows * cols;
     for (int i = 0; i < rows; i++) {
@@ -140,7 +137,7 @@ void compute_means(int rows, int cols, float*** data, float* means) {
     }
 }
 
-
+// Computes the deviations of the 3 channels of data, and stores it in the deviations tab
 void compute_deviations(int rows, int cols, float*** data, float* means,
                         float* deviations) {
     int total_points = rows * cols;
@@ -261,7 +258,6 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
             }
         }
     }
-
     pnm_save(imd, PnmRawPpm, imd_name);
 
     /********** MEMORY FREE **********/

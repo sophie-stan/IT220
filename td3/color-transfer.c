@@ -226,7 +226,7 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     float deviations_imt[3] = {};
     compute_deviations(rows_ims, cols_ims, data_ims_lab, means_ims,
                        deviations_ims);
-    compute_deviations(rows_imt, cols_imt, data_imt_lab, means_imt, //mean_imt->mean_ims
+    compute_deviations(rows_imt, cols_imt, data_imt_lab, means_ims, //mean_imt->mean_ims
                        deviations_imt);
 
     float*** res = malloc_3D_matrix(rows_imt, cols_imt); // DA (1.3)

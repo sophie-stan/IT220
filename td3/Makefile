@@ -12,5 +12,9 @@ all: $(BIN)
 clean:
 	$(RM) $(BIN) *.ppm
 
+test: all
+	./color-transfer ../data/flower.ppm ../data/mountain.ppm a.ppm && pvisu a.ppm
+	./color-transfer ../data/ocean.ppm ../data/forest.ppm a.ppm && pvisu a.ppm
+
 .PHONY: all clean
 

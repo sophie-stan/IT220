@@ -153,6 +153,16 @@ void compute_deviations(int rows, int cols, float*** data, float* means,
     }
 }
 
+// Computes lab
+void compute_lab(int rows, int cols, float*** data, float* means) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            for (int k = 0; k < 3; k++) {
+                data[i][j][k] = data[i][j][k] - means[k];
+            }
+        }
+    }
+}
 
 // Rounds all values of data + truncates if it is out of bound
 void normalize(int rows, int cols, float*** data) {
@@ -208,27 +218,15 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     compute_means(rows_imt, cols_imt, data_imt_lab, means_imt);
 
     // Computes lab*
-    for (int i = 0; i < rows_imt; i++) {
-        for (int j = 0; j < cols_imt; j++) {
-            for (int k = 0; k < 3; k++) {
-                data_imt_lab[i][j][k] = data_imt_lab[i][j][k] - means_imt[k];
-            }
-        }
-    }
-    for (int i = 0; i < rows_ims; i++) {
-        for (int j = 0; j < cols_ims; j++) {
-            for (int k = 0; k < 3; k++) {
-                data_ims_lab[i][j][k] = data_ims_lab[i][j][k] - means_ims[k];
-            }
-        }
-    }
+    compute_lab(rows_imt, cols_imt, data_imt_lab, means_imt);
+    compute_lab(rows_ims, cols_ims, data_ims_lab, means_ims);
 
     // Computes deviations
     float deviations_ims[3] = {};
     float deviations_imt[3] = {};
     compute_deviations(rows_ims, cols_ims, data_ims_lab, means_ims,
                        deviations_ims);
-    compute_deviations(rows_imt, cols_imt, data_imt_lab, means_imt,
+    compute_deviations(rows_imt, cols_imt, data_imt_lab, means_imt, //mean_imt->mean_ims
                        deviations_imt);
 
     float*** res = malloc_3D_matrix(rows_imt, cols_imt); // DA (1.3)

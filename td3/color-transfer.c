@@ -217,17 +217,19 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     compute_means(rows_ims, cols_ims, data_ims_lab, means_ims);
     compute_means(rows_imt, cols_imt, data_imt_lab, means_imt);
 
-    // Computes lab*
-    compute_lab(rows_imt, cols_imt, data_imt_lab, means_imt);
-    compute_lab(rows_ims, cols_ims, data_ims_lab, means_ims);
 
     // Computes deviations
     float deviations_ims[3] = {};
     float deviations_imt[3] = {};
     compute_deviations(rows_ims, cols_ims, data_ims_lab, means_ims,
                        deviations_ims);
-    compute_deviations(rows_imt, cols_imt, data_imt_lab, means_ims, //mean_imt->mean_ims
+    compute_deviations(rows_imt, cols_imt, data_imt_lab, means_imt,
                        deviations_imt);
+
+    // Computes lab* //after  Computes deviations
+    compute_lab(rows_imt, cols_imt, data_imt_lab, means_imt);
+    compute_lab(rows_ims, cols_ims, data_ims_lab, means_ims);
+
 
     float*** res = malloc_3D_matrix(rows_imt, cols_imt); // DA (1.3)
 
@@ -246,6 +248,41 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
 
     float*** rgb = switch_space(rows_imt, cols_imt, lms,3); // (DA 3)
     free_3D_matrix(rows_imt, cols_imt, lms); // Memory free (2)
+
+
+
+/*
+    float max_imt[3] = {};
+    float min_imt[3] = {};
+    float interval_imt[3] = {};
+
+    for (int k = 0; k < 3; k++) {
+        max_imt[k] = rgb[0][0][k];
+        min_imt[k] = rgb[0][0][k];
+    }
+
+
+    for (int i = 0; i < rows_imt; i++) {
+        for (int j = 0; j < cols_imt; j++) {
+            for (int k = 0; k < 3; k++) {
+                if(max_imt[k] < rgb[i][j][k]) max_imt[k] = rgb[i][j][k];
+                if(min_imt[k] > rgb[i][j][k]) min_imt[k] = rgb[i][j][k];
+            }
+        }
+    }
+
+    for (int k = 0; k < 3; k++) {
+        interval_imt[k] = (max_imt[k] - min_imt[k])/2.;
+    }
+
+    for (int i = 0; i < rows_imt; i++) {
+        for (int j = 0; j < cols_imt; j++) {
+            for (int k = 0; k < 3; k++) {
+                rgb[i][j][k] = abs(rgb[i][j][k] - interval_imt[k])/(2.*interval_imt[k]);
+            }
+        }
+    }
+*/
 
     normalize(rows_imt, cols_imt, rgb);
 

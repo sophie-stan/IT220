@@ -43,13 +43,6 @@ float LAB2LMS[D][D] = {
         {0.5774, -0.8165, 0.0}
 };
 
-enum transform {
-    RGB_TO_LMS = 0,
-    LMS_TO_LAB = 1,
-    LAB_TO_LMS = 2,
-    LMS_TO_RGB = 3,
-};
-
 // Allocates memory for a 3D matrix of floats and dimensions rows * cols * 3
 float*** malloc_3D_matrix(int rows, int cols) {
     float*** data = (float***) malloc(rows * sizeof(float*));
@@ -97,7 +90,7 @@ void matrix_prod_channels(float matrix[3][3], float input[3], float output[3]) {
 }
 
 // Switch space
-float*** switch_space(int rows, int cols, float*** input, enum transform t) {
+float*** switch_space(int rows, int cols, float*** input, int t) {
     float*** output = malloc_3D_matrix(rows, cols);
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
@@ -116,10 +109,13 @@ float*** switch_space(int rows, int cols, float*** input, enum transform t) {
                     matrix_prod_channels(LMS2LAB, input[i][j], output[i][j]);
                     break;
                 case 2: // LAB to LMS
-                    for (int k = 0; k < 3; k++) {
-                        input[i][j][k] = pow(10, input[i][j][k]);
-                    }
                     matrix_prod_channels(LAB2LMS, input[i][j], output[i][j]);
+                    for (int k = 0; k < 3; k++) {
+                        if (output[i][j][k] < 0) {
+                            output[i][j][k] = 0;
+                        }
+                        output[i][j][k] = pow(10, output[i][j][k]);
+                    }
                     break;
                 case 3: // LMS to RGB
                     matrix_prod_channels(LMS2RGB, input[i][j], output[i][j]);
@@ -155,35 +151,20 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     float*** data_ims = malloc_3D_matrix(rows_ims, cols_ims); // DA (1)
     fill_3D_matrix(rows_ims, cols_ims, data_ims, ims);
 
-    // Transfo ok
     float*** data_ims_lms = switch_space(rows_ims, cols_ims, data_ims, 0); // DA (2)
     free_3D_matrix(rows_ims, cols_ims, data_ims); // Memory free (1)
 
-    // Transfo sûrement pas okay ?
     float*** data_ims_lab = switch_space(rows_ims, cols_ims, data_ims_lms, 1); // DA (3)
     free_3D_matrix(rows_ims, cols_ims, data_ims_lms); // Memory free (2)
-
-    // The first problem seems to be here: lms to lab ? Maybe the logarithm ? I don't knooooow
-    for (int i = 0; i < rows_ims; i++) {
-        for (int j = 0; j < cols_ims; j++) {
-            for (int k = 0; k < 3; k++) {
-                printf("%f\n", data_ims_lab[i][j][k]);
-            }
-        }
-    }
 
     // BACK
     data_ims_lms = switch_space(rows_ims, cols_ims, data_ims_lab, 2); // DA (4)
     free_3D_matrix(rows_ims, cols_ims, data_ims_lab); // Memory free (3)
-    // Values are too big
-
 
     data_ims = switch_space(rows_ims, cols_ims, data_ims_lms, 3); // DA (5)
     free_3D_matrix(rows_ims, cols_ims, data_ims_lms); // Memory free (4)
-    // That's why values are to biiiiiiig here too
 
     normalize(rows_ims, cols_ims, data_ims);
-
     // Check up after the long long travel of ims
     for (int i = 0; i < rows_ims; i++) {
         for (int j = 0; j < cols_ims; j++) {

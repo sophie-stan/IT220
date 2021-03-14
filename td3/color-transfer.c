@@ -43,8 +43,15 @@ float LAB2LMS[D][D] = {
         {0.5774, -0.8165, 0.0}
 };
 
+enum transform {
+    RGB_TO_LMS = 0,
+    LMS_TO_LAB = 1,
+    LAB_TO_LMS = 2,
+    LMS_TO_RGB = 3,
+};
+
 // Allocates memory for a 3D matrix of floats and dimensions rows * cols * 3
-float*** malloc_img(int rows, int cols) {
+float*** malloc_3D_matrix(int rows, int cols) {
     float*** data = (float***) malloc(rows * sizeof(float*));
     for (int i = 0; i < rows; i++) {
         data[i] = (float**) malloc(cols * sizeof(float*));
@@ -59,7 +66,7 @@ float*** malloc_img(int rows, int cols) {
 }
 
 // Frees the memory allocated, and pointed to by data
-void free_img(int rows, int cols, float*** data) {
+void free_3D_matrix(int rows, int cols, float*** data) {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             free(data[i][j]);
@@ -70,7 +77,7 @@ void free_img(int rows, int cols, float*** data) {
 }
 
 // Fills data with the content of ims
-void fill_img(int rows, int cols, float*** data, pnm ims) {
+void fill_3D_matrix(int rows, int cols, float*** data, pnm ims) {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             for (int k = 0; k < 3; k++) {
@@ -81,70 +88,49 @@ void fill_img(int rows, int cols, float*** data, pnm ims) {
 }
 
 // Computes the matrix product: res = matrix * channels
-void matrix_prod_channels(float matrix[3][3], float channels[3], float res[3]) {
+void matrix_prod_channels(float matrix[3][3], float input[3], float output[3]) {
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
-            res[i] += matrix[i][j] * channels[j];
+            output[i] += matrix[i][j] * input[j];
         }
     }
 }
 
-// RGB to LMS (Dynamic allocation)
-float*** RGB_to_LMS(int rows, int cols, float*** rgb) {
-    float*** lms = malloc_img(rows, cols);
+// Switch space
+float*** switch_space(int rows, int cols, float*** input, enum transform t) {
+    float*** output = malloc_3D_matrix(rows, cols);
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            matrix_prod_channels(RGB2LMS, rgb[i][j], lms[i][j]);
-        }
-    }
-    return lms;
-}
-
-// LMS to RGB (Dynamic allocation)
-float*** LMS_to_RGB(int rows, int cols, float*** lms) {
-    float*** rgb = malloc_img(rows, cols);
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            matrix_prod_channels(LMS2RGB, lms[i][j], rgb[i][j]);
-        }
-    }
-    return rgb;
-}
-
-// LMS to LAB (Dynamic allocation)
-float*** LMS_to_LAB(int rows, int cols, float*** lms) {
-    float*** lab = malloc_img(rows, cols);
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            for (int k = 0; k < 3; k++) {
-                if (lab[i][j][k] <= 0) {
-                    lab[i][j][k] = 0.0001;
-                } else {
-                    lab[i][j][k] = log(lab[i][j][k]);
-                }
+            switch (t) {
+                case 0: // RGB to LMS
+                    matrix_prod_channels(RGB2LMS, input[i][j], output[i][j]);
+                    break;
+                case 1: // LMS to LAB
+                    for (int k = 0; k < 3; k++) {
+                        if (input[i][j][k] <= 0) {
+                            input[i][j][k] = 0.0001;
+                        } else {
+                            input[i][j][k] = log10(input[i][j][k]);
+                        }
+                    }
+                    matrix_prod_channels(LMS2LAB, input[i][j], output[i][j]);
+                    break;
+                case 2: // LAB to LMS
+                    for (int k = 0; k < 3; k++) {
+                        input[i][j][k] = pow(10, input[i][j][k]);
+                    }
+                    matrix_prod_channels(LAB2LMS, input[i][j], output[i][j]);
+                    break;
+                case 3: // LMS to RGB
+                    matrix_prod_channels(LMS2RGB, input[i][j], output[i][j]);
             }
-            matrix_prod_channels(LMS2LAB, lms[i][j], lab[i][j]);
         }
     }
-    return lab;
-}
-
-// LAB to LMS
-float*** LAB_to_LMS(int rows, int cols, float*** lab) {
-    float*** lms = malloc_img(rows, cols);
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            for (int k = 0; k < 3; k++) {
-                pow(10, lms[i][j][k]);
-            }
-            matrix_prod_channels(LAB2LMS, lab[i][j], lms[i][j]);
-        }
-    }
-    return lms;
+    return output;
 }
 
 // Rounds all values of data + truncates if it is out of bound
-void uniform(int rows, int cols, float*** data) {
+void normalize(int rows, int cols, float*** data) {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             for (int k = 0; k < 3; k++) {
@@ -165,24 +151,38 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     int cols_ims = pnm_get_width(ims);
     pnm imd = pnm_new(cols_ims, rows_ims, PnmRawPpm);
 
-    // Go
-    float*** data_ims = malloc_img(rows_ims, cols_ims); // DA (1)
-    fill_img(rows_ims, cols_ims, data_ims, ims);
+    // GO
+    float*** data_ims = malloc_3D_matrix(rows_ims, cols_ims); // DA (1)
+    fill_3D_matrix(rows_ims, cols_ims, data_ims, ims);
 
-    float*** data_ims_lms = RGB_to_LMS(rows_ims, cols_ims, data_ims); // DA (2)
-    free_img(rows_ims, cols_ims, data_ims); // Memory free (1)
+    // Transfo ok
+    float*** data_ims_lms = switch_space(rows_ims, cols_ims, data_ims, 0); // DA (2)
+    free_3D_matrix(rows_ims, cols_ims, data_ims); // Memory free (1)
 
-    float*** data_ims_lab = LMS_to_LAB(rows_ims, cols_ims, data_ims_lms); // DA (3)
-    free_img(rows_ims, cols_ims, data_ims_lms); // Memory free (2)
+    // Transfo sûrement pas okay ?
+    float*** data_ims_lab = switch_space(rows_ims, cols_ims, data_ims_lms, 1); // DA (3)
+    free_3D_matrix(rows_ims, cols_ims, data_ims_lms); // Memory free (2)
 
-    // Back
-    data_ims_lms = LAB_to_LMS(rows_ims, cols_ims, data_ims_lab); // DA (4)
-    free_img(rows_ims, cols_ims, data_ims_lab); // Memory free (3)
+    // The first problem seems to be here: lms to lab ? Maybe the logarithm ? I don't knooooow
+    for (int i = 0; i < rows_ims; i++) {
+        for (int j = 0; j < cols_ims; j++) {
+            for (int k = 0; k < 3; k++) {
+                printf("%f\n", data_ims_lab[i][j][k]);
+            }
+        }
+    }
 
-    data_ims = LMS_to_RGB(rows_ims, cols_ims, data_ims_lms); // DA (5)
-    free_img(rows_ims, cols_ims, data_ims_lms); // Memory free (4)
+    // BACK
+    data_ims_lms = switch_space(rows_ims, cols_ims, data_ims_lab, 2); // DA (4)
+    free_3D_matrix(rows_ims, cols_ims, data_ims_lab); // Memory free (3)
+    // Values are too big
 
-    uniform(rows_ims, cols_ims, data_ims);
+
+    data_ims = switch_space(rows_ims, cols_ims, data_ims_lms, 3); // DA (5)
+    free_3D_matrix(rows_ims, cols_ims, data_ims_lms); // Memory free (4)
+    // That's why values are to biiiiiiig here too
+
+    normalize(rows_ims, cols_ims, data_ims);
 
     // Check up after the long long travel of ims
     for (int i = 0; i < rows_ims; i++) {
@@ -193,10 +193,9 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
         }
     }
 
-
     pnm_save(imd, PnmRawPpm, imd_name);
     pnm_free(imd);
-    free_img(rows_ims, cols_ims, data_ims); // Memory free (5)
+    free_3D_matrix(rows_ims, cols_ims, data_ims); // Memory free (5)
     pnm_free(ims);
 }
 

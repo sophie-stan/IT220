@@ -196,7 +196,7 @@ void normalize(int rows, int cols, float*** data) {
 
 // Returns grid, a vector of exactly NB_SAMPLES pixels from data
 void compute_jittered_grid(int rows, int cols, float*** data,
-                           float grid[NB_SAMPLES][2]) {
+                           int grid[NB_SAMPLES][2]) {
     int ratio = rows > cols ? rows / cols : cols / rows;
     int min, max, min_prev, max_prev, R, C;
     min = 2;
@@ -246,6 +246,7 @@ void compute_jittered_grid(int rows, int cols, float*** data,
     */
 
     // JUST FOR THE TEST
+    
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             for (int k = 0; k < 3; k++) {
@@ -267,8 +268,8 @@ void compute_jittered_grid(int rows, int cols, float*** data,
                 i1 = rand() % h;
                 j1 = rand() % L;
             } while (i * h + i1 > rows - border || i * h + i1 < border ||
-                     j * L + j1 > cols - border || j * L + j1 < border);
 
+                     j * L + j1 > cols - border || j * L + j1 < border);
             // JUST FOR THE TEST
             for (int k = 0; k < 3; k++) {
                 data[i * h + i1][j * L + j1][k] = 255;
@@ -280,6 +281,62 @@ void compute_jittered_grid(int rows, int cols, float*** data,
         }
     }
 }
+
+
+// Computes the deviations of the area around each candidates in candidates list, and stores it in the candidates_deviations tab
+float compute_area_deviation(int rows, int cols, float*** data, int p, int q, float mean){
+    int total_points = 25;
+    float value = 0;
+    for (int i = -2; i < 3; i++) {
+        for (int j = -2; j < 3; j++) {
+            if( ( 0 <= (p + i) && (p + i) < rows ) && ( 0 <= (q + j) && (q + j) < cols ) ) 
+                value += pow(data[p+i][q+j][0] - mean, 2);
+        }
+    }
+    value = sqrt(value / total_points); 
+    return value;
+}
+
+
+// Returns the index of the minimum of the list list
+int list_minimum(float* list, int len){
+    int ind_min = 0;
+    for (int k = 0; k < len; k++) {
+        if(list[k] < list[ind_min])
+            ind_min = k;
+    }
+    return ind_min;
+}
+
+// Colors data
+void colorization(int rows, int cols, float*** in_data, float*** out_data,
+                float in_deviation[NB_SAMPLES], int candidates[NB_SAMPLES][2],
+                int in_len, float out_mean) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            float distance_list[in_len];
+            for (int k = 0; k < in_len; k++) {
+                float out_deviation = compute_area_deviation(rows,
+                                                            cols,
+                                                            out_data,
+                                                            i,
+                                                            j,
+                                                            out_mean);
+                                                            
+                distance_list[k] = 0.5 * (abs(out_data[i][j][0]
+                                            - in_data[candidates[k][0]][candidates[k][1]][0])
+                                        + abs(out_deviation
+                                            - in_deviation[k]));
+            }
+            int ind = list_minimum(distance_list, in_len);
+            int* coord = candidates[ind];
+            float* point = in_data[coord[0]][coord[1]];
+            out_data[i][j][1] = point[1];
+            out_data[i][j][2] = point[2];
+        }
+    }
+}
+
 
 void process(char* ims_name, char* imt_name, char* imd_name) {
     /********** INITIALIZATION **********/
@@ -323,10 +380,23 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
 
 
     /********** JITTERED GRID **********/
-
+    int candidates[NB_SAMPLES][2];
+    compute_jittered_grid(rows_ims, cols_ims, data_ims_lab, candidates);
 
     /********** BEST CANDIDATE SELECTION **********/
+    // Computes candidates deviations
+    float candidates_deviations[NB_SAMPLES] = {};
+    for (int k = 0; k < NB_SAMPLES; k++) {
+        candidates_deviations[k] = compute_area_deviation(rows_ims,
+                                                            cols_ims,
+                                                            data_ims_lab,
+                                                            candidates[k][0],
+                                                            candidates[k][1],
+                                                            luminance_mean_ims);
+    }
 
+    colorization(rows_imt, cols_imt, data_ims_lab, data_imt_lab,
+                    candidates_deviations, candidates, NB_SAMPLES, luminance_mean_imt);
 
     /********** BACK **********/
     float*** lms = switch_space(rows_imt, cols_imt, data_imt_lab, 2); // (DA 2)
@@ -338,9 +408,10 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     normalize(rows_imt, cols_imt, rgb);
 
 
+
     /************JUSTE POUR LE TEST************/
-    float grid[NB_SAMPLES][2];
-    compute_jittered_grid(rows_imt, cols_imt, rgb, grid);
+    //float grid[NB_SAMPLES][2];
+    //compute_jittered_grid(rows_imt, cols_imt, rgb, grid);
     /************JUSTE POUR LE TEST************/
 
 

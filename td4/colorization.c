@@ -14,11 +14,12 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include <bcl.h>
 
 #define D 3
-#define NB_SAMPLES 200
+#define NB_SAMPLES 200 // Must be a multiple of two
 
 float RGB2LMS[D][D] = {
         {0.3811, 0.5783, 0.0402},
@@ -193,38 +194,91 @@ void normalize(int rows, int cols, float*** data) {
     }
 }
 
-// Returns NB_SAMPLES
-void compute_jittered_grid(int rows, int cols, float*** data, float*** grid) {
-    int nb_samples = NB_SAMPLES;
-    if (nb_samples % 2 == 1) {
-        nb_samples += 1;
+// Returns grid, a vector of exactly NB_SAMPLES pixels from data
+void compute_jittered_grid(int rows, int cols, float*** data,
+                           float grid[NB_SAMPLES][2]) {
+    int ratio = rows > cols ? rows / cols : cols / rows;
+    int min, max, min_prev, max_prev, R, C;
+    min = 2;
+    max = NB_SAMPLES / 2;
+    while (max / min > ratio) {
+        min_prev = min;
+        max_prev = max;
+        do {
+            max--;
+        } while (NB_SAMPLES % max != 0);
+        min = NB_SAMPLES / max;
+    }
+    if (abs(ratio - max / min) > abs(ratio - max_prev / min_prev)) {
+        min = min_prev;
+        max = max_prev;
+    }
+    if (rows > cols) {
+        R = max;
+        C = min;
+    } else {
+        R = min;
+        C = max;
     }
 
-    int rows_tmp = rows;
-    int cols_tmp = cols;
-    int size_tmp = rows_tmp * cols_tmp;
 
-    if (size_tmp <= nb_samples) {
+/* Projet avorté
+    if (rows * cols <= nb_samples) {
         printf("The given image is too small to compute a jittered grid of %d samples\n",
                nb_samples);
         exit(EXIT_FAILURE);
     }
 
-    float ratio = rows / cols;
-    while (size_tmp > nb_samples) {
-
+    srand(time(NULL));
+    float rows_tmp = rows;
+    float cols_tmp = cols;
+    float ratio = rows_tmp / cols_tmp;
+    while (rows_tmp * cols_tmp > nb_samples + 20) { // surround of nb_samples
+        rows_tmp--;
+        cols_tmp = rows_tmp / ratio;
     }
+    printf("ratio : %f\n", ratio);
 
-    // on veut R * C = nb_samples
-    // On augmente ou diminue R et donc C en fonction du ratio
-    // jusqu'à tomber dans un encadrement autour de nb_sambles
+    int R = (int) round(rows_tmp);
+    int C = (int) round(cols_tmp);
+    printf("cols %d\n", C);
+    printf("rows %d\n", R);
+    */
 
-    /* We want
-     * R / C ~ rows / cols
-     * R * C = NB_SAMPLES
-     *
-     */
+    // JUST FOR THE TEST
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            for (int k = 0; k < 3; k++) {
+                data[i][j][k] = 0;
+            }
+        }
+    }
+    // JUST FOR THE TEST
 
+    // A square has a size of row/R * cols/C
+    int h = rows / R;
+    int L = cols / C;
+    int border = 5;
+    int cpt = 0;
+    for (int i = 0; i < R; i++) {
+        for (int j = 0; j < C; j++) {
+            int i1, j1;
+            do {
+                i1 = rand() % h;
+                j1 = rand() % L;
+            } while (i * h + i1 > rows - border || i * h + i1 < border ||
+                     j * L + j1 > cols - border || j * L + j1 < border);
+
+            // JUST FOR THE TEST
+            for (int k = 0; k < 3; k++) {
+                data[i * h + i1][j * L + j1][k] = 255;
+            }// JUST FOR THE TEST
+
+            grid[cpt][0] = i * h + i1;
+            grid[cpt][1] = j * L + j1;
+            cpt++;
+        }
+    }
 }
 
 void process(char* ims_name, char* imt_name, char* imd_name) {
@@ -283,6 +337,13 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
 
     normalize(rows_imt, cols_imt, rgb);
 
+
+    /************JUSTE POUR LE TEST************/
+    float grid[NB_SAMPLES][2];
+    compute_jittered_grid(rows_imt, cols_imt, rgb, grid);
+    /************JUSTE POUR LE TEST************/
+
+
     for (int i = 0; i < rows_imt; i++) {
         for (int j = 0; j < cols_imt; j++) {
             for (int k = 0; k < 3; k++) {
@@ -291,7 +352,6 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
         }
     }
     pnm_save(imd, PnmRawPpm, imd_name);
-
 
     /********** MEMORY FREE **********/
     pnm_free(imd);

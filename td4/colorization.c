@@ -18,6 +18,7 @@
 #include <bcl.h>
 
 #define D 3
+#define NB_SAMPLES 200
 
 float RGB2LMS[D][D] = {
         {0.3811, 0.5783, 0.0402},
@@ -150,7 +151,8 @@ float compute_luminance_mean(int rows, int cols, float*** data) {
 }
 
 // Computes the deviations of the luminance/first channel of data, and stores it in the deviations tab
-float compute_luminance_deviation(int rows, int cols, float*** data, float mean) {
+float
+compute_luminance_deviation(int rows, int cols, float*** data, float mean) {
     float deviation = 0;
     int total_points = rows * cols;
     for (int i = 0; i < rows; i++) {
@@ -162,13 +164,15 @@ float compute_luminance_deviation(int rows, int cols, float*** data, float mean)
     return deviation;
 }
 
-//remappes luminance of data
-void remappe_luminance(int rows, int cols, float*** data,
-float luminance_deviation_a, float luminance_deviation_b,
-float luminance_mean_a, float luminance_mean_b) {    
+// Remaps luminance of data
+void remap_luminance(int rows, int cols, float*** data,
+                     float luminance_deviation_a, float luminance_deviation_b,
+                     float luminance_mean_a, float luminance_mean_b) {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            data[i][j][0] = (luminance_deviation_b / luminance_deviation_a) * (data[i][j][0] - luminance_mean_a) + luminance_mean_b;
+            data[i][j][0] = (luminance_deviation_b / luminance_deviation_a) *
+                            (data[i][j][0] - luminance_mean_a) +
+                            luminance_mean_b;
         }
     }
 }
@@ -189,8 +193,42 @@ void normalize(int rows, int cols, float*** data) {
     }
 }
 
+// Returns NB_SAMPLES
+void compute_jittered_grid(int rows, int cols, float*** data, float*** grid) {
+    int nb_samples = NB_SAMPLES;
+    if (nb_samples % 2 == 1) {
+        nb_samples += 1;
+    }
+
+    int rows_tmp = rows;
+    int cols_tmp = cols;
+    int size_tmp = rows_tmp * cols_tmp;
+
+    if (size_tmp <= nb_samples) {
+        printf("The given image is too small to compute a jittered grid of %d samples\n",
+               nb_samples);
+        exit(EXIT_FAILURE);
+    }
+
+    float ratio = rows / cols;
+    while (size_tmp > nb_samples) {
+
+    }
+
+    // on veut R * C = nb_samples
+    // On augmente ou diminue R et donc C en fonction du ratio
+    // jusqu'à tomber dans un encadrement autour de nb_sambles
+
+    /* We want
+     * R / C ~ rows / cols
+     * R * C = NB_SAMPLES
+     *
+     */
+
+}
+
 void process(char* ims_name, char* imt_name, char* imd_name) {
-      /********** INITIALIZATION **********/
+    /********** INITIALIZATION **********/
     pnm ims = pnm_load(ims_name);
     pnm imt = pnm_load(imt_name);
     int rows_ims = pnm_get_height(ims);
@@ -207,17 +245,27 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
 
     /********** LUMINANCE REMAPPING **********/
     // Computes luminance means
-    float luminance_mean_ims = compute_luminance_mean(rows_ims, cols_ims, data_ims_lab);
-    float luminance_mean_imt = compute_luminance_mean(rows_imt, cols_imt, data_imt_lab);
+    float luminance_mean_ims = compute_luminance_mean(rows_ims, cols_ims,
+                                                      data_ims_lab);
+    float luminance_mean_imt = compute_luminance_mean(rows_imt, cols_imt,
+                                                      data_imt_lab);
 
     // Computes luminance deviations
-    float luminance_deviation_ims = compute_luminance_deviation(rows_ims, cols_ims, data_ims_lab, luminance_mean_ims);
-    float luminance_deviation_imt = compute_luminance_deviation(rows_imt, cols_imt, data_imt_lab, luminance_mean_imt);
-    
-    if(luminance_deviation_imt == 0) luminance_deviation_imt = 0.0001;
+    float luminance_deviation_ims = compute_luminance_deviation(rows_ims,
+                                                                cols_ims,
+                                                                data_ims_lab,
+                                                                luminance_mean_ims);
+    float luminance_deviation_imt = compute_luminance_deviation(rows_imt,
+                                                                cols_imt,
+                                                                data_imt_lab,
+                                                                luminance_mean_imt);
 
-    // Remappes luminance
-    remappe_luminance(rows_imt, cols_imt, data_imt_lab, luminance_deviation_imt, luminance_deviation_ims, luminance_mean_imt, luminance_mean_ims);
+    if (luminance_deviation_imt == 0) luminance_deviation_imt = 0.0001;
+
+    // Remaps luminance
+    remap_luminance(rows_imt, cols_imt, data_imt_lab, luminance_deviation_imt,
+                    luminance_deviation_ims, luminance_mean_imt,
+                    luminance_mean_ims);
 
 
     /********** JITTERED GRID **********/
@@ -227,10 +275,10 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
 
 
     /********** BACK **********/
-    float*** lms = switch_space(rows_imt, cols_imt, data_imt_lab,2); // (DA 2)
+    float*** lms = switch_space(rows_imt, cols_imt, data_imt_lab, 2); // (DA 2)
     //free_3D_matrix(rows_imt, cols_imt, res); // Memory free (1.3)
 
-    float*** rgb = switch_space(rows_imt, cols_imt, lms,3); // (DA 3)
+    float*** rgb = switch_space(rows_imt, cols_imt, lms, 3); // (DA 3)
     free_3D_matrix(rows_imt, cols_imt, lms); // Memory free (2)
 
     normalize(rows_imt, cols_imt, rgb);
@@ -238,7 +286,7 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     for (int i = 0; i < rows_imt; i++) {
         for (int j = 0; j < cols_imt; j++) {
             for (int k = 0; k < 3; k++) {
-                pnm_set_component(imd, i, j , k, rgb[i][j][k]);
+                pnm_set_component(imd, i, j, k, rgb[i][j][k]);
             }
         }
     }

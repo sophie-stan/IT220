@@ -136,6 +136,43 @@ float*** phase1(pnm img, int rows, int cols) {
     return lab;
 }
 
+// Computes the mean of the luminance/first channel of data in the mean float
+float compute_luminance_mean(int rows, int cols, float*** data) {
+    float mean = 0;
+    int total_points = rows * cols;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            mean += data[i][j][0];
+        }
+    }
+    mean /= total_points;
+    return mean;
+}
+
+// Computes the deviations of the luminance/first channel of data, and stores it in the deviations tab
+float compute_luminance_deviation(int rows, int cols, float*** data, float mean) {
+    float deviation = 0;
+    int total_points = rows * cols;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            deviation += pow(data[i][j][0] - mean, 2);
+        }
+    }
+    deviation = sqrt(deviation / total_points);
+    return deviation;
+}
+
+//remappes luminance of data
+void remappe_luminance(int rows, int cols, float*** data,
+float luminance_deviation_a, float luminance_deviation_b,
+float luminance_mean_a, float luminance_mean_b) {    
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            data[i][j][0] = (luminance_deviation_b / luminance_deviation_a) * (data[i][j][0] - luminance_mean_a) + luminance_mean_b;
+        }
+    }
+}
+
 // Rounds all values of data + truncates if it is out of bound
 void normalize(int rows, int cols, float*** data) {
     for (int i = 0; i < rows; i++) {
@@ -168,10 +205,25 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     float*** data_imt_lab = phase1(imt, rows_imt, cols_imt); // DA (1.2)
     pnm_save(imd, PnmRawPpm, imd_name);
 
+    /********** LUMINANCE REMAPPING **********/
+    // Computes luminance means
+    float luminance_mean_ims = compute_luminance_mean(rows_ims, cols_ims, data_ims_lab);
+    float luminance_mean_imt = compute_luminance_mean(rows_imt, cols_imt, data_imt_lab);
+
+    // Computes luminance deviations
+    float luminance_deviation_ims = compute_luminance_deviation(rows_ims, cols_ims, data_ims_lab, luminance_mean_ims);
+    float luminance_deviation_imt = compute_luminance_deviation(rows_imt, cols_imt, data_imt_lab, luminance_mean_imt);
+    
+    if(luminance_deviation_imt == 0) luminance_deviation_imt = 0.0001;
+
+    // Remappes luminance
+    remappe_luminance(rows_imt, cols_imt, data_imt_lab, luminance_deviation_imt, luminance_deviation_ims, luminance_mean_imt, luminance_mean_ims);
 
 
+    /********** JITTERED GRID **********/
 
 
+    /********** BEST CANDIDATE SELECTION **********/
 
 
     /********** BACK **********/
@@ -181,7 +233,7 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     float*** rgb = switch_space(rows_imt, cols_imt, lms,3); // (DA 3)
     free_3D_matrix(rows_imt, cols_imt, lms); // Memory free (2)
 
-    normalize(rows_imt, cols_imt, rgb);
+    //normalize(rows_imt, cols_imt, rgb);
 
     for (int i = 0; i < rows_imt; i++) {
         for (int j = 0; j < cols_imt; j++) {

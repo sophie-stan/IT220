@@ -19,8 +19,171 @@
 
 #define D 3
 
+float RGB2LMS[D][D] = {
+        {0.3811, 0.5783, 0.0402},
+        {0.1967, 0.7244, 0.0782},
+        {0.0241, 0.1288, 0.8444}
+};
+
+float LMS2RGB[D][D] = {
+        {4.4679,  -3.5873, 0.1193},
+        {-1.2186, 2.3809,  -0.1624},
+        {0.0497,  -0.2439, 1.2045}
+};
+
+float LMS2LAB[D][D] = {
+        {0.5774, 0.5774,  0.5774},
+        {0.4082, 0.4082,  -0.8165},
+        {0.7071, -0.7071, 0.0}
+};
+
+float LAB2LMS[D][D] = {
+        {0.5774, 0.4082,  0.7071},
+        {0.5774, 0.4082,  -0.7071},
+        {0.5774, -0.8165, 0.0}
+};
+
+// Allocates memory for a 3D matrix of floats and dimensions rows * cols * 3
+float*** malloc_3D_matrix(int rows, int cols) {
+    float*** data = (float***) malloc(rows * sizeof(float*));
+    for (int i = 0; i < rows; i++) {
+        data[i] = (float**) malloc(cols * sizeof(float*));
+        for (int j = 0; j < cols; j++) {
+            data[i][j] = (float*) malloc(3 * sizeof(float));
+            for (int k = 0; k < 3; k++) {
+                data[i][j][k] = 0;
+            }
+        }
+    }
+    return data;
+}
+
+// Frees the memory allocated, and pointed to by data
+void free_3D_matrix(int rows, int cols, float*** data) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            free(data[i][j]);
+        }
+        free(data[i]);
+    }
+    free(data);
+}
+
+// Fills data with the content of ims
+void fill_3D_matrix(int rows, int cols, float*** data, pnm img) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            for (int k = 0; k < 3; k++) {
+                data[i][j][k] = pnm_get_component(img, i, j, k);
+            }
+        }
+    }
+}
+
+// Computes the matrix product: res = matrix * channels
+void matrix_prod_channels(float matrix[3][3], float input[3], float output[3]) {
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            output[i] += matrix[i][j] * input[j];
+        }
+    }
+}
+
+// Switches input from space according to t
+float*** switch_space(int rows, int cols, float*** input, int t) {
+    float*** output = malloc_3D_matrix(rows, cols);
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            switch (t) {
+                case 0: // RGB to LMS
+                    matrix_prod_channels(RGB2LMS, input[i][j], output[i][j]);
+                    break;
+                case 1: // LMS to LAB
+                    for (int k = 0; k < 3; k++) {
+                        if (input[i][j][k] <= 0) {
+                            input[i][j][k] = 0.0001;
+                        } else {
+                            input[i][j][k] = log10(input[i][j][k]);
+                        }
+                    }
+                    matrix_prod_channels(LMS2LAB, input[i][j], output[i][j]);
+                    break;
+                case 2: // LAB to LMS
+                    matrix_prod_channels(LAB2LMS, input[i][j], output[i][j]);
+                    for (int k = 0; k < 3; k++) {
+                        output[i][j][k] = pow(10, output[i][j][k]);
+                    }
+                    break;
+                case 3: // LMS to RGB
+                    matrix_prod_channels(LMS2RGB, input[i][j], output[i][j]);
+            }
+        }
+    }
+    return output;
+}
+
+// Translates img into lab space
+float*** phase1(pnm img, int rows, int cols) {
+    float*** rgb = malloc_3D_matrix(rows, cols);
+    fill_3D_matrix(rows, cols, rgb, img);
+
+    float*** lms = switch_space(rows, cols, rgb, 0);
+    free_3D_matrix(rows, cols, rgb);
+
+    float*** lab = switch_space(rows, cols, lms, 1);
+    free_3D_matrix(rows, cols, lms);
+
+    return lab;
+}
+
 void process(char* ims_name, char* imt_name, char* imd_name) {
-  
+      /********** INITIALIZATION **********/
+    pnm ims = pnm_load(ims_name);
+    pnm imt = pnm_load(imt_name);
+    int rows_ims = pnm_get_height(ims);
+    int cols_ims = pnm_get_width(ims);
+    int rows_imt = pnm_get_height(imt);
+    int cols_imt = pnm_get_width(imt);
+
+    pnm imd = pnm_new(cols_imt, rows_imt, PnmRawPpm); // On applique ims sur imt
+
+    /********** GO **********/
+    float*** data_ims_lab = phase1(ims, rows_ims, cols_ims); // DA (1.1)
+    float*** data_imt_lab = phase1(imt, rows_imt, cols_imt); // DA (1.2)
+    pnm_save(imd, PnmRawPpm, imd_name);
+
+
+
+
+
+
+
+    /********** BACK **********/
+    float*** lms = switch_space(rows_imt, cols_imt, data_imt_lab,2); // (DA 2)
+    //free_3D_matrix(rows_imt, cols_imt, res); // Memory free (1.3)
+
+    float*** rgb = switch_space(rows_imt, cols_imt, lms,3); // (DA 3)
+    free_3D_matrix(rows_imt, cols_imt, lms); // Memory free (2)
+
+    //normalize(rows_imt, cols_imt, rgb);
+
+    for (int i = 0; i < rows_imt; i++) {
+        for (int j = 0; j < cols_imt; j++) {
+            for (int k = 0; k < 3; k++) {
+                pnm_set_component(imd, i, j , k, rgb[i][j][k]);
+            }
+        }
+    }
+    pnm_save(imd, PnmRawPpm, imd_name);
+
+
+    /********** MEMORY FREE **********/
+    pnm_free(imd);
+    free_3D_matrix(rows_ims, cols_ims, data_ims_lab); // Memory free (1.1)
+    free_3D_matrix(rows_imt, cols_imt, data_imt_lab); // Memory free (1.2)
+    free_3D_matrix(rows_imt, cols_imt, rgb); // Memory free (3)
+    pnm_free(ims);
+    pnm_free(imt);
 }
 
 void usage(char* s) {

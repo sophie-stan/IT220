@@ -233,7 +233,7 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     float*** rgb = switch_space(rows_imt, cols_imt, lms,3); // (DA 3)
     free_3D_matrix(rows_imt, cols_imt, lms); // Memory free (2)
 
-    //normalize(rows_imt, cols_imt, rgb);
+    normalize(rows_imt, cols_imt, rgb);
 
     for (int i = 0; i < rows_imt; i++) {
         for (int j = 0; j < cols_imt; j++) {

@@ -136,6 +136,22 @@ float*** phase1(pnm img, int rows, int cols) {
     return lab;
 }
 
+// Rounds all values of data + truncates if it is out of bound
+void normalize(int rows, int cols, float*** data) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            for (int k = 0; k < 3; k++) {
+                data[i][j][k] = round(data[i][j][k]);
+                if (data[i][j][k] > 255) {
+                    data[i][j][k] = 255;
+                } else if (data[i][j][k] < 0) {
+                    data[i][j][k] = 0;
+                }
+            }
+        }
+    }
+}
+
 void process(char* ims_name, char* imt_name, char* imd_name) {
       /********** INITIALIZATION **********/
     pnm ims = pnm_load(ims_name);
@@ -165,7 +181,7 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     float*** rgb = switch_space(rows_imt, cols_imt, lms,3); // (DA 3)
     free_3D_matrix(rows_imt, cols_imt, lms); // Memory free (2)
 
-    //normalize(rows_imt, cols_imt, rgb);
+    normalize(rows_imt, cols_imt, rgb);
 
     for (int i = 0; i < rows_imt; i++) {
         for (int j = 0; j < cols_imt; j++) {

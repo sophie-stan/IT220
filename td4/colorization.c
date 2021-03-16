@@ -82,7 +82,7 @@ void fill_3D_matrix(int rows, int cols, float*** data, pnm img) {
     }
 }
 
-// Computes the matrix product: res = matrix * channels
+// Computes the matrix product: ouput = matrix * input
 void matrix_prod_channels(float matrix[3][3], float input[3], float output[3]) {
     for (int i = 0; i < 3; i++) {
         for (int j = 0; j < 3; j++) {
@@ -194,73 +194,49 @@ void normalize(int rows, int cols, float*** data) {
     }
 }
 
-// Returns grid, a vector of exactly NB_SAMPLES pixels from data
-void compute_jittered_grid(int rows, int cols, float*** data,
-                           int grid[NB_SAMPLES][2]) {
-    int ratio = rows > cols ? rows / cols : cols / rows;
+// Fills candidates, a vector of exactly NB_SAMPLES pixels from data
+void compute_candidates(int rows, int cols, int candidates[NB_SAMPLES][2]) {
+    /** Appropriate grid **/
+    /* Finds the two integers R and C, so that R * C = NB_SAMPLES
+     * and so that the ratio R/C is the closest possible to rows/cols.
+     */
+    int ratio = rows > cols ? rows / cols : cols / rows; // ensures ratio > 1
     int min, max, min_prev, max_prev, R, C;
     min = 2;
     max = NB_SAMPLES / 2;
+    /* (1) While our current ratio (max / min) is higher than the image's ratio
+     * (2) We keep digging for another couple of integers (min, max) such as
+     * min * max = NB_SAMPLES
+     * (3) When max / min < ratio, we verify that the previous couple (min, max)
+     * is not CLOSER to the image's ratio than the last one we found.
+     * (4) Which side is longer than the other one ?
+     */
+    // (1)
     while (max / min > ratio) {
         min_prev = min;
         max_prev = max;
+        // (2)
         do {
             max--;
         } while (NB_SAMPLES % max != 0);
         min = NB_SAMPLES / max;
     }
+    // (3)
     if (abs(ratio - max / min) > abs(ratio - max_prev / min_prev)) {
         min = min_prev;
         max = max_prev;
     }
-    if (rows > cols) {
-        R = max;
-        C = min;
-    } else {
-        R = min;
-        C = max;
-    }
+    // (4)
+    R = rows > cols ? max : min;
+    C = rows > cols ? min : max;
 
 
-/* Projet avorté
-    if (rows * cols <= nb_samples) {
-        printf("The given image is too small to compute a jittered grid of %d samples\n",
-               nb_samples);
-        exit(EXIT_FAILURE);
-    }
-
-    srand(time(NULL));
-    float rows_tmp = rows;
-    float cols_tmp = cols;
-    float ratio = rows_tmp / cols_tmp;
-    while (rows_tmp * cols_tmp > nb_samples + 20) { // surround of nb_samples
-        rows_tmp--;
-        cols_tmp = rows_tmp / ratio;
-    }
-    printf("ratio : %f\n", ratio);
-
-    int R = (int) round(rows_tmp);
-    int C = (int) round(cols_tmp);
-    printf("cols %d\n", C);
-    printf("rows %d\n", R);
-    */
-
-    // JUST FOR THE TEST
-    
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            for (int k = 0; k < 3; k++) {
-                data[i][j][k] = 0;
-            }
-        }
-    }
-    // JUST FOR THE TEST
-
-    // A square has a size of row/R * cols/C
+    /** Candidates filling **/
+    // A grid square has a size of row/R * cols/C
     int h = rows / R;
     int L = cols / C;
     int border = 5;
-    int cpt = 0;
+    int cpt = 0; // current index in candidates
     for (int i = 0; i < R; i++) {
         for (int j = 0; j < C; j++) {
             int i1, j1;
@@ -268,41 +244,39 @@ void compute_jittered_grid(int rows, int cols, float*** data,
                 i1 = rand() % h;
                 j1 = rand() % L;
             } while (i * h + i1 > rows - border || i * h + i1 < border ||
-
                      j * L + j1 > cols - border || j * L + j1 < border);
-            // JUST FOR THE TEST
-            for (int k = 0; k < 3; k++) {
-                data[i * h + i1][j * L + j1][k] = 255;
-            }// JUST FOR THE TEST
-
-            grid[cpt][0] = i * h + i1;
-            grid[cpt][1] = j * L + j1;
+            candidates[cpt][0] = i * h + i1;
+            candidates[cpt][1] = j * L + j1;
             cpt++;
         }
     }
 }
 
 
-// Computes the deviations of the area around each candidates in candidates list, and stores it in the candidates_deviations tab
-float compute_area_deviation(int rows, int cols, float*** data, int p, int q, float mean){
+/* Computes the deviations of the area around each candidates in candidates list
+ * and stores it in the candidates_deviations tab
+ */
+float compute_area_deviation(int rows, int cols, float*** data, int p, int q,
+                             float mean) {
     int total_points = 25;
     float value = 0;
     for (int i = -2; i < 3; i++) {
         for (int j = -2; j < 3; j++) {
-            if( ( 0 <= (p + i) && (p + i) < rows ) && ( 0 <= (q + j) && (q + j) < cols ) ) 
-                value += pow(data[p+i][q+j][0] - mean, 2);
+            if ((0 <= (p + i) && (p + i) < rows) &&
+                (0 <= (q + j) && (q + j) < cols))
+                value += pow(data[p + i][q + j][0] - mean, 2);
         }
     }
-    value = sqrt(value / total_points); 
+    value = sqrt(value / total_points);
     return value;
 }
 
 
 // Returns the index of the minimum of the list list
-int list_minimum(float* list, int len){
+int list_minimum(float* list, int len) {
     int ind_min = 0;
     for (int k = 0; k < len; k++) {
-        if(list[k] < list[ind_min])
+        if (list[k] < list[ind_min])
             ind_min = k;
     }
     return ind_min;
@@ -310,23 +284,20 @@ int list_minimum(float* list, int len){
 
 // Colors data
 void colorization(int rows, int cols, float*** in_data, float*** out_data,
-                float in_deviation[NB_SAMPLES], int candidates[NB_SAMPLES][2],
-                int in_len, float out_mean) {
+                  float in_deviation[NB_SAMPLES], int candidates[NB_SAMPLES][2],
+                  int in_len, float out_mean) {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             float distance_list[in_len];
             for (int k = 0; k < in_len; k++) {
-                float out_deviation = compute_area_deviation(rows,
-                                                            cols,
-                                                            out_data,
-                                                            i,
-                                                            j,
-                                                            out_mean);
-                                                            
-                distance_list[k] = 0.5 * (abs(out_data[i][j][0]
-                                            - in_data[candidates[k][0]][candidates[k][1]][0])
-                                        + abs(out_deviation
-                                            - in_deviation[k]));
+                float out_deviation =
+                        compute_area_deviation(rows, cols, out_data, i, j,
+                                               out_mean);
+
+                distance_list[k] = 0.5 * (fabs(out_data[i][j][0] -
+                                               in_data[candidates[k][0]][candidates[k][1]][0]) +
+                                          fabs(out_deviation -
+                                               in_deviation[k]));
             }
             int ind = list_minimum(distance_list, in_len);
             int* coord = candidates[ind];
@@ -381,22 +352,31 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
 
     /********** JITTERED GRID **********/
     int candidates[NB_SAMPLES][2];
-    compute_jittered_grid(rows_ims, cols_ims, data_ims_lab, candidates);
+    compute_candidates(rows_imt, cols_imt, candidates);
+    /* You can verify the content of candidates with this:
+    for (int i = 0; i < NB_SAMPLES; i++) {
+        printf("%d: (%d, %d)\n",i, candidates[i][0], candidates[i][1]);
+
+    }*/
 
     /********** BEST CANDIDATE SELECTION **********/
     // Computes candidates deviations
+    /*
     float candidates_deviations[NB_SAMPLES] = {};
     for (int k = 0; k < NB_SAMPLES; k++) {
         candidates_deviations[k] = compute_area_deviation(rows_ims,
-                                                            cols_ims,
-                                                            data_ims_lab,
-                                                            candidates[k][0],
-                                                            candidates[k][1],
-                                                            luminance_mean_ims);
+                                                          cols_ims,
+                                                          data_ims_lab,
+                                                          candidates[k][0],
+                                                          candidates[k][1],
+                                                          luminance_mean_ims);
     }
 
     colorization(rows_imt, cols_imt, data_ims_lab, data_imt_lab,
-                    candidates_deviations, candidates, NB_SAMPLES, luminance_mean_imt);
+                 candidates_deviations, candidates, NB_SAMPLES,
+                 luminance_mean_imt);
+                 */
+
 
     /********** BACK **********/
     float*** lms = switch_space(rows_imt, cols_imt, data_imt_lab, 2); // (DA 2)
@@ -406,15 +386,6 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     free_3D_matrix(rows_imt, cols_imt, lms); // Memory free (2)
 
     normalize(rows_imt, cols_imt, rgb);
-
-
-
-    /************JUSTE POUR LE TEST************/
-    //float grid[NB_SAMPLES][2];
-    //compute_jittered_grid(rows_imt, cols_imt, rgb, grid);
-    /************JUSTE POUR LE TEST************/
-
-
     for (int i = 0; i < rows_imt; i++) {
         for (int j = 0; j < cols_imt; j++) {
             for (int k = 0; k < 3; k++) {

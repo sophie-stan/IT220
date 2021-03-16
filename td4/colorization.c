@@ -148,8 +148,8 @@ float compute_luminance_deviation(int rows, int cols, float*** data, float mean)
     return deviation;
 }
 
-//remappes luminance of data
-void remappe_luminance(int rows, int cols, float*** data,
+// Remaps luminance of data
+void remap_luminance(int rows, int cols, float*** data,
 float luminance_deviation_a, float luminance_deviation_b,
 float luminance_mean_a, float luminance_mean_b) {    
     for (int i = 0; i < rows; i++) {
@@ -289,9 +289,9 @@ void colorization(int rows, int cols, float*** in_data, float*** out_data,
                                                             j,
                                                             out_mean);
                                                             
-                distance_list[k] = 0.5 * (abs(out_data[i][j][0]
+                distance_list[k] = 0.5 * (fabs(out_data[i][j][0]
                                             - in_data[candidates[k][0]][candidates[k][1]][0])
-                                        + abs(out_deviation
+                                        + fabs(out_deviation
                                             - in_deviation[k]));
             }
             int ind = list_minimum(distance_list, in_len);
@@ -338,17 +338,30 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
 
     /********** LUMINANCE REMAPPING **********/
     // Computes luminance means
-    float luminance_mean_ims = compute_luminance_mean(rows_ims, cols_ims, data_ims_lab);
-    float luminance_mean_imt = compute_luminance_mean(rows_imt, cols_imt, data_imt_lab);
+    float luminance_mean_ims = compute_luminance_mean(rows_ims,
+                                                    cols_ims,
+                                                    data_ims_lab);
+    float luminance_mean_imt = compute_luminance_mean(rows_imt,
+                                                    cols_imt,
+                                                    data_imt_lab);
 
     // Computes luminance deviations
-    float luminance_deviation_ims = compute_luminance_deviation(rows_ims, cols_ims, data_ims_lab, luminance_mean_ims);
-    float luminance_deviation_imt = compute_luminance_deviation(rows_imt, cols_imt, data_imt_lab, luminance_mean_imt);
+    float luminance_deviation_ims = compute_luminance_deviation(rows_ims,
+                                                                cols_ims,
+                                                                data_ims_lab,
+                                                                luminance_mean_ims);
+    float luminance_deviation_imt = compute_luminance_deviation(rows_imt,
+                                                                cols_imt,
+                                                                data_imt_lab,
+                                                                luminance_mean_imt);
 
     if(luminance_deviation_imt == 0) luminance_deviation_imt = 0.0001;
 
-    // Remappes luminance
-    remappe_luminance(rows_imt, cols_imt, data_imt_lab, luminance_deviation_imt, luminance_deviation_ims, luminance_mean_imt, luminance_mean_ims);
+    // Remaps luminance
+    remap_luminance(rows_imt, cols_imt, data_imt_lab,
+                    luminance_deviation_imt, luminance_deviation_ims,
+                    luminance_mean_imt, luminance_mean_ims);
+    
     /********** JITTERED GRID **********/
 
     int candidates[NB_SAMPLES][2];
@@ -368,7 +381,7 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     }
 
     colorization(rows_imt, cols_imt, data_ims_lab, data_imt_lab,
-                    candidates_deviations, candidates, NB_SAMPLES, luminance_mean_imt);
+                candidates_deviations, candidates, NB_SAMPLES, luminance_mean_imt);
 
 
 
@@ -407,3 +420,4 @@ int main(int argc, char* argv[]) {
     process(argv[1], argv[2], argv[3]);
     return EXIT_SUCCESS;
 }
+

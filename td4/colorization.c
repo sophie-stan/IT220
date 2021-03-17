@@ -1,9 +1,9 @@
 /**
  * @file color-transfert
  * @brief transfert color from source image to target image.
- *        Method from Reinhard et al. : 
- *        Erik Reinhard, Michael Ashikhmin, Bruce Gooch and Peter Shirley, 
- *        'Color Transfer between Images', IEEE CGA special issue on 
+ *        Method from Reinhard et al. :
+ *        Erik Reinhard, Michael Ashikhmin, Bruce Gooch and Peter Shirley,
+ *        'Color Transfer between Images', IEEE CGA special issue on
  *        Applied Perception, Vol 21, No 5, pp 34-41, September - October 2001
  *
  * Link for the article which inspired the following exercise:
@@ -281,8 +281,7 @@ int min_tab(float* tab, int len) {
 
 // Colorizes imt with ims. rows and cols belongs to imt.
 void colorization(int rows, int cols, float*** ims, float*** imt,
-                  float in_deviation[NB_SAMPLES], int candidates[NB_SAMPLES][2],
-                  float out_mean) {
+                  float in_deviation[NB_SAMPLES], int candidates[NB_SAMPLES][2]) {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             float distances[NB_SAMPLES];
@@ -377,7 +376,7 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
                                        luminance_mean_ims);
     }
     colorization(rows_imt, cols_imt, data_ims_lab, data_imt_lab,
-                 candidates_deviations, candidates, luminance_mean_imt);
+                 candidates_deviations, candidates);
 
     /********** BACK **********/
     float*** lms = switch_space(rows_imt, cols_imt, data_imt_lab, 2); // (DA 2)
@@ -423,4 +422,3 @@ int main(int argc, char* argv[]) {
     }
     return EXIT_SUCCESS;
 }
-

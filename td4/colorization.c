@@ -9,6 +9,12 @@
  * Link for the article which inspired the following exercise:
  * https://vta.vvv.enseirb-matmeca.fr/IT220/20.21/WAM-02.pdf
  */
+/*
+Partie 2.2
+
+*/
+
+
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
@@ -99,7 +105,7 @@ float*** switch_space(int rows, int cols, float*** input, int t) {
                         if (input[i][j][k] <= 0) {
                             input[i][j][k] = 0.0001;
                         } else {
-                            input[i][j][k] = log10(input[i][j][k]);
+                            input[i][j][k] = log10f(input[i][j][k]);
                         }
                     }
                     matrix_prod_channels(LMS2LAB, input[i][j], output[i][j]);
@@ -107,7 +113,7 @@ float*** switch_space(int rows, int cols, float*** input, int t) {
                 case 2: // LAB to LMS
                     matrix_prod_channels(LAB2LMS, input[i][j], output[i][j]);
                     for (int k = 0; k < 3; k++) {
-                        output[i][j][k] = pow(10, output[i][j][k]);
+                        output[i][j][k] = powf(10, output[i][j][k]);
                     }
                     break;
                 case 3: // LMS to RGB
@@ -149,10 +155,10 @@ compute_luminance_deviation(int rows, int cols, float*** data, float mean) {
     int total_points = rows * cols;
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            deviation += pow(data[i][j][0] - mean, 2);
+            deviation += powf(data[i][j][0] - mean, 2);
         }
     }
-    deviation = sqrt(deviation / total_points);
+    deviation = sqrtf(deviation / total_points);
     return deviation;
 }
 
@@ -173,18 +179,39 @@ void remap_luminance(int rows, int cols, float*** data,
 // Computes the deviations of the area around each candidates in candidates list, and stores it in the candidates_deviations tab
 float compute_area_deviation(int rows, int cols, float*** data, int p, int q,
                              float mean) {
-    int total_points = 25;
+    int total_points = 0;
     float value = 0;
     for (int i = -2; i < 3; i++) {
         for (int j = -2; j < 3; j++) {
             if ((0 <= (p + i) && (p + i) < rows) &&
-                (0 <= (q + j) && (q + j) < cols))
-                value += pow(data[p + i][q + j][0] - mean, 2);
+                (0 <= (q + j) && (q + j) < cols)){
+                value += powf(data[p + i][q + j][0] - mean, 2);
+                total_points += 1;
+            }
         }
     }
-    value = sqrt(value / total_points);
+    value = sqrtf(value / total_points);
     return value;
 }
+
+
+// Computes the mean of the area around data[p][q]
+float compute_area_mean(int rows, int cols, float*** data, int p, int q) {
+    int total_points = 0;
+    float value = 0;
+    for (int i = -2; i < 3; i++) {
+        for (int j = -2; j < 3; j++) {
+            if ((0 <= (p + i) && (p + i) < rows) &&
+                (0 <= (q + j) && (q + j) < cols)){
+                value += data[p + i][q + j][0];
+                total_points += 1;
+            }
+        }
+    }
+    value = sqrtf(value / total_points);
+    return value;
+}
+
 
 // Fills candidates, a vector of exactly NB_SAMPLES pixels from data
 void compute_candidates(int rows, int cols, int candidates[NB_SAMPLES][2]) {
@@ -259,13 +286,12 @@ void colorization(int rows, int cols, float*** ims, float*** imt,
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             float distances[NB_SAMPLES];
+            float mean = compute_area_mean(rows, cols, imt, i, j);
             for (int k = 0; k < NB_SAMPLES; k++) {
                 float out_deviation =
-                        compute_area_deviation(rows, cols, imt, i, j,
-                                               out_mean);
+                        compute_area_deviation(rows, cols, imt, i, j, mean);
                 distances[k] = 0.5 * (fabs(imt[i][j][0]
-                                           -
-                                           ims[candidates[k][0]][candidates[k][1]][0])
+                                           - ims[candidates[k][0]][candidates[k][1]][0])
                                       + fabs(out_deviation
                                              - in_deviation[k]));
             }

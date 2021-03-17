@@ -222,7 +222,6 @@ void compute_candidates(int rows, int cols, int candidates[NB_SAMPLES][2]) {
     R = rows > cols ? max : min;
     C = rows > cols ? min : max;
 
-
     /** Candidates filling **/
     // A grid square has a size of row/R * cols/C
     int h = rows / R;
@@ -244,47 +243,40 @@ void compute_candidates(int rows, int cols, int candidates[NB_SAMPLES][2]) {
     }
 }
 
-
-// Returns the index of the minimum of the list list
-int list_minimum(float* list, int len) {
-    int ind_min = 0;
+// Returns the index of the first minimum occurrence in tab
+int min_tab(float* tab, int len) {
+    int i = 0;
     for (int k = 0; k < len; k++) {
-        if (list[k] < list[ind_min])
-            ind_min = k;
+        i = (tab[k] < tab[i]) ? k : i;
     }
-    return ind_min;
+    return i;
 }
 
-// Colors data
-void colorization(int rows, int cols, float*** in_data, float*** out_data,
+// Colorizes imt with ims. rows and cols belongs to imt.
+void colorization(int rows, int cols, float*** ims, float*** imt,
                   float in_deviation[NB_SAMPLES], int candidates[NB_SAMPLES][2],
-                  int in_len, float out_mean) {
+                  float out_mean) {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            float distance_list[in_len];
-            for (int k = 0; k < in_len; k++) {
-                float out_deviation = compute_area_deviation(rows,
-                                                             cols,
-                                                             out_data,
-                                                             i,
-                                                             j,
-                                                             out_mean);
-
-                distance_list[k] = 0.5 * (fabs(out_data[i][j][0]
-                                               -
-                                               in_data[candidates[k][0]][candidates[k][1]][0])
-                                          + fabs(out_deviation
-                                                 - in_deviation[k]));
+            float distances[NB_SAMPLES];
+            for (int k = 0; k < NB_SAMPLES; k++) {
+                float out_deviation =
+                        compute_area_deviation(rows, cols, imt, i, j,
+                                               out_mean);
+                distances[k] = 0.5 * (fabs(imt[i][j][0]
+                                           -
+                                           ims[candidates[k][0]][candidates[k][1]][0])
+                                      + fabs(out_deviation
+                                             - in_deviation[k]));
             }
-            int ind = list_minimum(distance_list, in_len);
+            int ind = min_tab(distances, NB_SAMPLES);
             int* coord = candidates[ind];
-            float* point = in_data[coord[0]][coord[1]];
-            out_data[i][j][1] = point[1];
-            out_data[i][j][2] = point[2];
+            float* point = ims[coord[0]][coord[1]];
+            imt[i][j][1] = point[1];
+            imt[i][j][2] = point[2];
         }
     }
 }
-
 
 // Rounds all values of data + truncates if it is out of bound
 void normalize(int rows, int cols, float*** data) {
@@ -304,6 +296,7 @@ void normalize(int rows, int cols, float*** data) {
 
 
 void process(char* ims_name, char* imt_name, char* imd_name) {
+
     /********** INITIALIZATION **********/
     pnm ims = pnm_load(ims_name);
     pnm imt = pnm_load(imt_name);
@@ -320,22 +313,18 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
 
     /********** LUMINANCE REMAPPING **********/
     // Computes luminance means
-    float luminance_mean_ims = compute_luminance_mean(rows_ims,
-                                                      cols_ims,
-                                                      data_ims_lab);
-    float luminance_mean_imt = compute_luminance_mean(rows_imt,
-                                                      cols_imt,
-                                                      data_imt_lab);
+    float luminance_mean_ims =
+            compute_luminance_mean(rows_ims, cols_ims, data_ims_lab);
+    float luminance_mean_imt =
+            compute_luminance_mean(rows_imt, cols_imt, data_imt_lab);
 
     // Computes luminance deviations
-    float luminance_deviation_ims = compute_luminance_deviation(rows_ims,
-                                                                cols_ims,
-                                                                data_ims_lab,
-                                                                luminance_mean_ims);
-    float luminance_deviation_imt = compute_luminance_deviation(rows_imt,
-                                                                cols_imt,
-                                                                data_imt_lab,
-                                                                luminance_mean_imt);
+    float luminance_deviation_ims =
+            compute_luminance_deviation(rows_ims, cols_ims, data_ims_lab,
+                                        luminance_mean_ims);
+    float luminance_deviation_imt =
+            compute_luminance_deviation(rows_imt, cols_imt, data_imt_lab,
+                                        luminance_mean_imt);
 
     if (luminance_deviation_imt == 0) luminance_deviation_imt = 0.0001;
 
@@ -346,30 +335,23 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
 
     /********** JITTERED GRID **********/
     int candidates[NB_SAMPLES][2];
-    compute_candidates(rows_imt, cols_imt, candidates);
+    compute_candidates(rows_ims, cols_ims, candidates);
     /* You can verify the content of candidates with this:
     for (int i = 0; i < NB_SAMPLES; i++) {
         printf("%d: (%d, %d)\n",i, candidates[i][0], candidates[i][1]);
     }*/
 
-
     /********** BEST CANDIDATE SELECTION **********/
     // Computes candidates deviations
     float candidates_deviations[NB_SAMPLES] = {};
     for (int k = 0; k < NB_SAMPLES; k++) {
-        candidates_deviations[k] = compute_area_deviation(rows_ims,
-                                                          cols_ims,
-                                                          data_ims_lab,
-                                                          candidates[k][0],
-                                                          candidates[k][1],
-                                                          luminance_mean_ims);
+        candidates_deviations[k] =
+                compute_area_deviation(rows_ims, cols_ims, data_ims_lab,
+                                       candidates[k][0], candidates[k][1],
+                                       luminance_mean_ims);
     }
-
     colorization(rows_imt, cols_imt, data_ims_lab, data_imt_lab,
-                 candidates_deviations, candidates, NB_SAMPLES,
-                 luminance_mean_imt);
-
-
+                 candidates_deviations, candidates, luminance_mean_imt);
 
     /********** BACK **********/
     float*** lms = switch_space(rows_imt, cols_imt, data_imt_lab, 2); // (DA 2)
@@ -379,7 +361,6 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
     free_3D_matrix(rows_imt, cols_imt, lms); // Memory free (2)
 
     normalize(rows_imt, cols_imt, rgb);
-
     for (int i = 0; i < rows_imt; i++) {
         for (int j = 0; j < cols_imt; j++) {
             for (int k = 0; k < 3; k++) {
@@ -388,6 +369,7 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
         }
     }
     pnm_save(imd, PnmRawPpm, imd_name);
+
     /********** MEMORY FREE **********/
     pnm_free(imd);
     free_3D_matrix(rows_ims, cols_ims, data_ims_lab); // Memory free (1.1)
@@ -407,6 +389,12 @@ void usage(char* s) {
 int main(int argc, char* argv[]) {
     if (argc != PARAM + 1) usage(argv[0]);
     process(argv[1], argv[2], argv[3]);
+    int nb_samples = NB_SAMPLES;
+    if (nb_samples % 2 != 0) {
+        printf("The constant NB_SAMPLES defined at the beginning of the"
+               " prog is not valid\n");
+        exit(EXIT_FAILURE);
+    }
     return EXIT_SUCCESS;
 }
 

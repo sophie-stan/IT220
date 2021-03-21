@@ -1,19 +1,7 @@
 /**
- * @file color-transfert
- * @brief transfert color from source image to target image.
- *        Method from Reinhard et al. :
- *        Erik Reinhard, Michael Ashikhmin, Bruce Gooch and Peter Shirley,
- *        'Color Transfer between Images', IEEE CGA special issue on
- *        Applied Perception, Vol 21, No 5, pp 34-41, September - October 2001
- *
  * Link for the article which inspired the following exercise:
  * https://vta.vvv.enseirb-matmeca.fr/IT220/20.21/WAM-02.pdf
  */
-/*
-Partie 2.2
-
-*/
-
 
 #include <float.h>
 #include <math.h>
@@ -22,7 +10,8 @@ Partie 2.2
 #include <bcl.h>
 
 #define D 3
-#define NB_SAMPLES 200 // Must be a multiple of two
+#define NB_SAMPLES 200 // Must be an even number
+#define NEIGHBORHOOD_SIZE 5 // Must be an odd number
 
 float RGB2LMS[D][D] = {
         {0.3811, 0.5783, 0.0402},
@@ -162,7 +151,7 @@ compute_luminance_deviation(int rows, int cols, float*** data, float mean) {
     return deviation;
 }
 
-// Remaps luminance of data
+// Luminance remapping of data
 void remap_luminance(int rows, int cols, float*** data,
                      float luminance_deviation_a, float luminance_deviation_b,
                      float luminance_mean_a, float luminance_mean_b) {
@@ -175,16 +164,16 @@ void remap_luminance(int rows, int cols, float*** data,
     }
 }
 
-
-// Computes the deviations of the area around each candidates in candidates list, and stores it in the candidates_deviations tab
+// Computes the deviations of the area around the pixel (p,q) from data
 float compute_area_deviation(int rows, int cols, float*** data, int p, int q,
                              float mean) {
+    int radius = NEIGHBORHOOD_SIZE / 2;
     int total_points = 0;
     float value = 0;
-    for (int i = -2; i < 3; i++) {
-        for (int j = -2; j < 3; j++) {
+    for (int i = -radius; i < radius + 1; i++) {
+        for (int j = -radius; j < radius + 1; j++) {
             if ((0 <= (p + i) && (p + i) < rows) &&
-                (0 <= (q + j) && (q + j) < cols)){
+                (0 <= (q + j) && (q + j) < cols)) {
                 value += powf(data[p + i][q + j][0] - mean, 2);
                 total_points += 1;
             }
@@ -194,23 +183,25 @@ float compute_area_deviation(int rows, int cols, float*** data, int p, int q,
     return value;
 }
 
-
+/*
 // Computes the mean of the area around data[p][q]
 float compute_area_mean(int rows, int cols, float*** data, int p, int q) {
     int total_points = 0;
     float value = 0;
-    for (int i = -2; i < 3; i++) {
-        for (int j = -2; j < 3; j++) {
+    int radius = NEIGHBORHOOD_SIZE / 2;
+    for (int i = -radius; i < radius + 1; i++) {
+        for (int j = -radius; j < radius + 1; j++) {
             if ((0 <= (p + i) && (p + i) < rows) &&
                 (0 <= (q + j) && (q + j) < cols)){
-                value += data[p + i][q + j][0];
-                total_points += 1;
+                //value += data[p + i][q + j][0]
+                //total_points += 1;
+                value += pow(data[p + i][q + j][0] - mean, 2);
             }
         }
     }
     value = sqrtf(value / total_points);
     return value;
-}
+}*/
 
 
 // Fills candidates, a vector of exactly NB_SAMPLES pixels from data
@@ -253,7 +244,7 @@ void compute_candidates(int rows, int cols, int candidates[NB_SAMPLES][2]) {
     // A grid square has a size of row/R * cols/C
     int h = rows / R;
     int L = cols / C;
-    int border = 5;
+    int gap = NEIGHBORHOOD_SIZE / 2;
     int cpt = 0; // current index in candidates
     for (int i = 0; i < R; i++) {
         for (int j = 0; j < C; j++) {
@@ -261,8 +252,8 @@ void compute_candidates(int rows, int cols, int candidates[NB_SAMPLES][2]) {
             do {
                 i1 = rand() % h;
                 j1 = rand() % L;
-            } while (i * h + i1 > rows - border || i * h + i1 < border ||
-                     j * L + j1 > cols - border || j * L + j1 < border);
+            } while (i * h + i1 > rows - gap || i * h + i1 < gap ||
+                     j * L + j1 > cols - gap || j * L + j1 < gap);
             candidates[cpt][0] = i * h + i1;
             candidates[cpt][1] = j * L + j1;
             cpt++;
@@ -280,22 +271,28 @@ int min_tab(float* tab, int len) {
 }
 
 // Colorizes imt with ims. rows and cols belongs to imt.
-void colorization(int rows, int cols, float*** ims, float*** imt,
-                  float in_deviation[NB_SAMPLES], int candidates[NB_SAMPLES][2]) {
+void colorization(int rows, int cols, float*** imt, float*** ims,
+                  int candidates_ims[NB_SAMPLES][2],
+                  float deviations_ims[NB_SAMPLES],
+                  float luminance_mean_ims) {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             float distances[NB_SAMPLES];
-            float mean = compute_area_mean(rows, cols, imt, i, j);
+            //float mean = compute_area_mean(rows, cols, imt, i, j);
+            float deviation_imt =
+                    compute_area_deviation(rows, cols, imt, i, j,
+                                           luminance_mean_ims);
+
+
             for (int k = 0; k < NB_SAMPLES; k++) {
-                float out_deviation =
-                        compute_area_deviation(rows, cols, imt, i, j, mean);
                 distances[k] = 0.5 * (fabs(imt[i][j][0]
-                                           - ims[candidates[k][0]][candidates[k][1]][0])
-                                      + fabs(out_deviation
-                                             - in_deviation[k]));
+                                           -
+                                           ims[candidates_ims[k][0]][candidates_ims[k][1]][0])
+                                      + fabs(deviation_imt
+                                             - deviations_ims[k]));
             }
             int ind = min_tab(distances, NB_SAMPLES);
-            int* coord = candidates[ind];
+            int* coord = candidates_ims[ind];
             float* point = ims[coord[0]][coord[1]];
             imt[i][j][1] = point[1];
             imt[i][j][2] = point[2];
@@ -359,15 +356,17 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
                     luminance_mean_imt, luminance_mean_ims);
 
     /********** JITTERED GRID **********/
+    /* This step allows to reduce the number of comparisons made for each pixel
+     * in the grey-scale image.
+     */
     int candidates[NB_SAMPLES][2];
     compute_candidates(rows_ims, cols_ims, candidates);
-    /* You can verify the content of candidates with this:
-    for (int i = 0; i < NB_SAMPLES; i++) {
-        printf("%d: (%d, %d)\n",i, candidates[i][0], candidates[i][1]);
-    }*/
 
     /********** BEST CANDIDATE SELECTION **********/
-    // Computes candidates deviations
+    /* For each pixel candidate in the greyscale image, the  best  matching
+    * color sample is selected.
+    */
+    // Computes the deviation area for each candidate pixel of ims. (grey img)
     float candidates_deviations[NB_SAMPLES] = {};
     for (int k = 0; k < NB_SAMPLES; k++) {
         candidates_deviations[k] =
@@ -375,8 +374,8 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
                                        candidates[k][0], candidates[k][1],
                                        luminance_mean_ims);
     }
-    colorization(rows_imt, cols_imt, data_ims_lab, data_imt_lab,
-                 candidates_deviations, candidates);
+    colorization(rows_imt, cols_imt, data_imt_lab, data_ims_lab,
+                 candidates, candidates_deviations, luminance_mean_ims);
 
     /********** BACK **********/
     float*** lms = switch_space(rows_imt, cols_imt, data_imt_lab, 2); // (DA 2)

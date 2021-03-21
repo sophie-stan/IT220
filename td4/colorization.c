@@ -203,7 +203,7 @@ float compute_area_deviation(int rows, int cols, float*** data, int p, int q,
     return value;
 }
 
-/*
+
 // Computes the mean of the area around data[p][q]
 float compute_area_mean(int rows, int cols, float*** data, int p, int q) {
     int total_points = 0;
@@ -213,16 +213,14 @@ float compute_area_mean(int rows, int cols, float*** data, int p, int q) {
         for (int j = -radius; j < radius + 1; j++) {
             if ((0 <= (p + i) && (p + i) < rows) &&
                 (0 <= (q + j) && (q + j) < cols)){
-                //value += data[p + i][q + j][0]
-                //total_points += 1;
-                value += pow(data[p + i][q + j][0] - mean, 2);
+                value += data[p + i][q + j][0];
+                total_points += 1;
             }
         }
     }
-    value = sqrtf(value / total_points);
+    value = value / total_points;
     return value;
-}*/
-
+}
 
 // Fills candidates, a vector of exactly NB_SAMPLES pixels from data
 void compute_candidates(int rows, int cols, int candidates[NB_SAMPLES][2]) {
@@ -293,15 +291,14 @@ int min_tab(float* tab, int len) {
 // Colorizes imt with ims. rows and cols belongs to imt.
 void colorization(int rows, int cols, float*** imt, float*** ims,
                   int candidates_ims[NB_SAMPLES][2],
-                  float deviations_ims[NB_SAMPLES],
-                  float luminance_mean_ims) {
+                  float deviations_ims[NB_SAMPLES]) {
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             float distances[NB_SAMPLES];
-            //float mean = compute_area_mean(rows, cols, imt, i, j);
+            float mean = compute_area_mean(rows, cols, imt, i, j);
             float deviation_imt =
                     compute_area_deviation(rows, cols, imt, i, j,
-                                           luminance_mean_ims);
+                                           mean);
 
 
             for (int k = 0; k < NB_SAMPLES; k++) {
@@ -395,7 +392,7 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
                                        luminance_mean_ims);
     }
     colorization(rows_imt, cols_imt, data_imt_lab, data_ims_lab,
-                 candidates, candidates_deviations, luminance_mean_ims);
+                 candidates, candidates_deviations);
 
     /********** BACK **********/
     float*** lms = switch_space(rows_imt, cols_imt, data_imt_lab, 2); // (DA 2)

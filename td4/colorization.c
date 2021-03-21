@@ -3,6 +3,26 @@
  * https://vta.vvv.enseirb-matmeca.fr/IT220/20.21/WAM-02.pdf
  */
 
+/* swatches (2.2)
+ * Swatches are small rectangles in images
+ * Here, a swatch is defined by :
+ *          - an image
+ *          - a position (i, j)
+ *          - a size (width, height)
+ * This data could be stored in a `swatch` structure.
+ * The number of swatches is variable, that's why we would use getopt(),
+ * and put the swatch structures into a tab.
+ *
+ * Explication:
+ * 1) We use every functions we implemented so far for the colorization program
+ * except we provide also the corresponding swatches to the functions, and
+ * define a new constant NB_SAMPLES_PER_SWATCH = 50
+ * 2) Now to fill up the rest of the greyscale image, we compute the error
+ * distance E = sum((imt(p) - lum_ims(p))^2) for each pixel...?
+ *
+ * Prototype: swatches(ims, swatches_ims[NB_IMS], imt, swatches_imt[NB_IMT]
+ */
+
 #include <float.h>
 #include <math.h>
 #include <stdio.h>
@@ -285,11 +305,13 @@ void colorization(int rows, int cols, float*** imt, float*** ims,
 
 
             for (int k = 0; k < NB_SAMPLES; k++) {
-                distances[k] = 0.5 * (fabs(imt[i][j][0]
-                                           -
-                                           ims[candidates_ims[k][0]][candidates_ims[k][1]][0])
-                                      + fabs(deviation_imt
-                                             - deviations_ims[k]));
+                // Distance between a pixel in imt and ims
+                // + the distance between the pixel's deviation in imt and ims
+                distances[k] =
+                        fabs(imt[i][j][0] -
+                        ims[candidates_ims[k][0]][candidates_ims[k][1]][0])
+                        +
+                        fabs(deviation_imt - deviations_ims[k]);
             }
             int ind = min_tab(distances, NB_SAMPLES);
             int* coord = candidates_ims[ind];
@@ -361,6 +383,13 @@ void process(char* ims_name, char* imt_name, char* imd_name) {
      */
     int candidates[NB_SAMPLES][2];
     compute_candidates(rows_ims, cols_ims, candidates);
+    for (int i = 0; i < rows_ims; i ++) {
+        for (int j = 0; j < cols_ims; j ++) {
+            for (int k = 0; k < 3; k ++) {
+                data_ims_lab[i][j][k] = 0;
+            }
+        }
+    }
 
     /********** BEST CANDIDATE SELECTION **********/
     /* For each pixel candidate in the greyscale image, the  best  matching

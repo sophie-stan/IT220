@@ -63,21 +63,23 @@ backward(int rows, int cols, fftw_complex* freq_repr) {
 }
 
 void
-freq2spectra(int rows, int cols, fftw_complex* freq_repr, float* as,
-             float* ps) {
-    (void) rows;
-    (void) cols;
-    (void) freq_repr;
-    (void) as;
-    (void) ps;
+freq2spectra(int rows, int cols, fftw_complex* freq_repr, float* as, float* ps) 
+{
+    for (unsigned int i = 0; i < (unsigned int) rows*cols*sizeof(fftw_complex); i++) {
+        fftw_complex c = *freq_repr+i;
+        double re = creal(c);
+        double im = cimag(c);
+        as[i] = sqrtf(re * re + im * im);
+        ps[i] = atanf(im / re);
+    }
 }
 
-void
-spectra2freq(int rows, int cols, float* as, float* ps,
-             fftw_complex* freq_repr) {
-    (void) rows;
-    (void) cols;
-    (void) as;
-    (void) ps;
-    (void) freq_repr;
+void 
+spectra2freq(int rows, int cols, float* as, float* ps, fftw_complex* freq_repr)
+{
+    for (unsigned int i = 0; i < (unsigned int) rows*cols*sizeof(fftw_complex); i++) {
+        double re = as[i] * cosf(ps[i]);
+        double im = as[i] * sinf(ps[i]);
+        *(freq_repr+i) = re +  I * im;
+    }
 }

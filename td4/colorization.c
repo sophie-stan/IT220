@@ -15,10 +15,12 @@
  *
  * Explication:
  * 1) We use every functions we implemented so far for the colorization program
- * except we provide also the corresponding swatches to the functions, and
- * define a new constant NB_SAMPLES_PER_SWATCH = 50
+ * except we provide also the corresponding swatches instead of the whole image
+ * (data) to the functions, and define a new constant NB_SAMPLES_PER_SWATCH = 50
  * 2) Now to fill up the rest of the greyscale image, we compute the error
- * distance E = sum((imt(p) - lum_ims(p))^2) for each pixel...?
+ * distance between neighborhood Ng in  the  greyscale  image  and
+ * neighborhood Ns in  the  colorized swatch as
+ * E(Ng,Ns) = sum((imt(p) - lum_ims(p))^2) for each pixel.
  *
  * Prototype: swatches(ims, swatches_ims[NB_IMS], imt, swatches_imt[NB_IMT]
  */

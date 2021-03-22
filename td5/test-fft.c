@@ -12,43 +12,40 @@
 #include <fft.h>
 
 #define ERROR 5
+#define NAME_SIZE 50
 
 /**
  * @brief test the forward and backward functions
  * @param char* name, the input image file name
  */
 void
-test_forward_backward(char* path) {
+test_forward_backward(char* name) {
     fprintf(stderr, "test_forward_backward: ");
 
-    pnm ims = pnm_load(path);
+    unsigned short* g_ims, * g_imd;
+    fftw_complex* freq_repr;
+
+    pnm ims = pnm_load(name);
     int rows = pnm_get_height(ims);
     int cols = pnm_get_width(ims);
     pnm imd = pnm_new(cols, rows, PnmRawPpm);
 
-    unsigned short* input;
-    unsigned short* output;
-    fftw_complex* tmp;
 
-    input = pnm_get_channel(ims, NULL, 0);
-    tmp = forward(rows, cols, input); // Malloc
+    /** Changing part **/
+    g_ims = pnm_get_channel(ims, NULL, 0);
+    freq_repr = forward(rows, cols, g_ims); // Malloc
 
-    output = backward(rows, cols, tmp); // Malloc
-    assert(output != NULL);
+    g_imd = backward(rows, cols, freq_repr); // Malloc
+    assert(g_imd != NULL);
+    /** Changing part **/
+
 
     for (int k = 0; k < 3; k++) {
-        pnm_set_channel(imd, output, k);
+        pnm_set_channel(imd, g_imd, k);
     }
 
-    char* name = basename(path);
-    int dest_len = strlen(name) + 3 + 4 + 1;
-    char dest[dest_len];
-    memset(dest, 0, dest_len * sizeof(char));
-    strcpy(dest, "FB-");
-    pnm_save(imd, PnmRawPpm, strcat(strcat(dest, name), ".ppm"));
-
-    for (int i = 0; i < rows; i ++) {
-        for (int j = 0; j < cols; j ++) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
             if (abs(pnm_get_component(ims, i, j, 0) -
                     pnm_get_component(imd, i, j, 0)) > ERROR) {
                 fprintf(stderr, "KO\n");
@@ -56,14 +53,17 @@ test_forward_backward(char* path) {
             }
         }
     }
-
     fprintf(stderr, "OK\n");
+
+    char* _name = basename(name);
+    char dest[NAME_SIZE] = "FB-";
+    pnm_save(imd, PnmRawPpm, strcat(strcat(dest, _name), ".ppm"));
 
     pnm_free(imd);
     pnm_free(ims);
-    free(input);
-    free(output);
-    fftw_free(tmp);
+    free(g_ims);
+    free(g_imd);
+    fftw_free(freq_repr);
 }
 
 /**
@@ -71,78 +71,61 @@ test_forward_backward(char* path) {
  * @param char *name: the input image file name
  */
 void
-test_reconstruction(char* name)
-{
+test_reconstruction(char* name) {
     fprintf(stderr, "test_reconstruction: ");
+
+    fftw_complex* freq_repr;
+    unsigned short* g_ims, * g_imd;
+    float* as, * ps;
 
     pnm ims = pnm_load(name);
     int rows = pnm_get_height(ims);
     int cols = pnm_get_width(ims);
-    int size = rows*cols;
-
+    int size = rows * cols;
     pnm imd = pnm_new(cols, rows, PnmRawPpm);
 
-    char * _name = basename(name);
 
-    //on créé unsigned short *gray_image avec ims
-    unsigned short* g_ims = malloc(size*sizeof(unsigned short));
-    for (unsigned short i = 0; i < rows; i++) {
-        for (unsigned short j = 0; j < cols; j++) {
-            *(g_ims + (i+j)*sizeof(unsigned short)) = 
-            (unsigned short) pnm_get_component(ims, i, j, 0);
-        }
+    /** Changing part **/
+    // Allocation of the channel from the grayscale image
+    g_ims = pnm_get_channel(ims, NULL, 0);
+    // Allocation of the the channel transformed
+    freq_repr = forward(rows, cols, g_ims);
+    // Allocation of the amplitude and phase spectra
+    as = malloc(size * sizeof(float));
+    ps = malloc(size * sizeof(float));
+
+    freq2spectra(rows, cols, freq_repr, as, ps);
+    spectra2freq(rows, cols, as, ps, freq_repr);
+
+    // Allocation of the channel from the grayscale image (return)
+    g_imd = backward(rows, cols, freq_repr);
+    /** Changing part **/
+
+
+    for (int k = 0; k < 3; k++) {
+        pnm_set_channel(imd, g_imd, k);
     }
 
-    //on créé freq_repr_in ce qui nous met dans l'espace des fréquences
-    fftw_complex* freq_repr_in = malloc(size*sizeof(fftw_complex));
-    freq_repr_in = forward(rows, cols, g_ims);
-    
-    float* as_out = malloc(size*sizeof(float));
-    float* ps_out = malloc(size*sizeof(float));
+    char* _name = basename(name);
+    char dest[NAME_SIZE] = "FB-ASPS-";
+    pnm_save(imd, PnmRawPpm, strcat(strcat(dest, _name), ".ppm"));
 
-    //on passe de l'espace des fréquences à celui des phases/amplitudes
-    freq2spectra(rows, cols, freq_repr_in, as_out, ps_out);
-
-    //on revient edans l'espace des frequences
-    fftw_complex* freq_repr_out = malloc(size*sizeof(fftw_complex));
-
-    spectra2freq(rows, cols, as_out, ps_out, freq_repr_out);
-
-    //on revient à une matrice grise
-    unsigned short* g_imd = backward(rows, cols, freq_repr_out);
-
-    //on repasse dand pnm
-    for (unsigned short i = 0; i < rows; i++) {
-        for (unsigned short j = 0; j < cols; j++) {
-            for (int k = 0; k < 3; k++) {
-                pnm_set_component(imd, i, j, k,
-                (unsigned short) *g_imd
-                + (i+j)*sizeof(unsigned short));
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            if (abs(pnm_get_component(ims, i, j, 0) -
+                    pnm_get_component(imd, i, j, 0)) > ERROR) {
+                fprintf(stderr, "KO\n");
+                exit(EXIT_FAILURE);
             }
         }
     }
-
-    //on test l'égalité terme à terme
-    for (unsigned short i = 0; i < rows; i++) {
-        for (unsigned short j = 0; j < cols; j++) {
-            for (int k = 0; k < 3; k++) {
-                if( (pnm_get_component(ims, i, j, k) 
-                    -
-                    pnm_get_component(ims, i, j, k)) < ERROR)
-                    exit(EXIT_FAILURE);
-            }
-        }
-    }    
-
-    char fb_asps[100] = "FB-ASPS-";
-    //printf("ninon %s : %zu efe\n",name,strlen(name));
-    strcat(fb_asps,_name);
-    pnm_save(imd, PnmRawPpm, fb_asps);
-
-    //pnm_free(imd);
-    pnm_free(ims);
-
     fprintf(stderr, "OK\n");
+
+    pnm_free(imd);
+    pnm_free(ims);
+    free(g_ims);
+    free(g_imd);
+    fftw_free(freq_repr);
 }
 
 /**

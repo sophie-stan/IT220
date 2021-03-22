@@ -18,8 +18,8 @@
  * @param unsigned short* gray_image: the grayscale input image
  * @return the Fourrier transform in frequency domain
  */
-fftw_complex *
-forward(int rows, int cols, unsigned short *gray_image);
+fftw_complex*
+forward(int rows, int cols, unsigned short* g_img);
 
 /**
  * @brief perform a discrete inverse 2D Fourier transform from freqency domain
@@ -28,8 +28,8 @@ forward(int rows, int cols, unsigned short *gray_image);
  * @param fft_complex* freq_repr: the frequency complex input 
  * @return the grayscale image from inverse Fourier transform
  */
-unsigned short *
-backward(int rows, int cols, fftw_complex *freq_repr);
+unsigned short*
+backward(int rows, int cols, fftw_complex* freq_repr);
 
 /**
  * @brief compute amplitude and phase spectrum from frequency domain
@@ -39,8 +39,8 @@ backward(int rows, int cols, fftw_complex *freq_repr);
  * @param float* as: the amplitude spectrum output
  * @param float* ps: the phase spectrum output
  */
-void 
-freq2spectra(int rows, int cols, fftw_complex *freq_repr, float *as, float *ps);
+void
+freq2spectra(int rows, int cols, fftw_complex* freq_repr, float* as, float* ps);
 
 /**
  * @brief compute the complex frequency from amplitude and phase spectrum
@@ -50,7 +50,7 @@ freq2spectra(int rows, int cols, fftw_complex *freq_repr, float *as, float *ps);
  * @param float* ps: the phase spectrum input
  * @param fft_complex* freq_repr: the frequency complex output
  */
-void 
+void
 spectra2freq(int rows, int cols, float* as, float* ps, fftw_complex* freq_repr);
 
 #endif /* FFT_H */

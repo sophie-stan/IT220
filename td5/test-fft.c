@@ -10,6 +10,7 @@
 #include <assert.h>
 
 #include <fft.h>
+#include <math.h>
 
 #define ERROR 5
 #define NAME_SIZE 50
@@ -149,17 +150,19 @@ test_display(char* name) {
 
     normalize(as);
     normalize(ps);
-
+    unsigned short* _as = (unsigned short*) as;
+    unsigned short* _ps = (unsigned short*) ps;
+    
     for (int k = 0; k < 3; k++) {
-        pnm_set_channel(imd_as, as, k);
-        pnm_set_channel(imd_ps, ps, k);
+        pnm_set_channel(imd_as, _as, k);
+        pnm_set_channel(imd_ps, _ps, k);
     }
 
     char* _name = basename(name);
-    char _as[NAME_SIZE] = "AS-";
-    char _ps[NAME_SIZE] = "PS-";
-    pnm_save(imd_as, PnmRawPpm, strcat(_as, _name));
-    pnm_save(imd_ps, PnmRawPpm, strcat(_ps, _name));
+    char as_name[NAME_SIZE] = "AS-";
+    char ps_name[NAME_SIZE] = "PS-";
+    pnm_save(imd_as, PnmRawPpm, strcat(as_name, _name));
+    pnm_save(imd_ps, PnmRawPpm, strcat(ps_name, _name));
 
     pnm_free(imd_as);
     pnm_free(imd_ps);

@@ -12,6 +12,10 @@ all: $(BIN)
 
 test-fft: test-fft.o fft.o
 
+show: test-fft
+	./test-fft ../data/lena-gray.ppm && pvisu FB-lena-gray.ppm.ppm\
+     && pvisu FB-ASPS-lena-gray.ppm.ppm
+
 .PHONY: clean 
 clean:
 	$(RM) *.o *~ *.ppm

@@ -23,14 +23,14 @@ forward(int rows, int cols, unsigned short* g_img) {
     freq_repr = fftw_malloc(sizeof(fftw_complex) * rows * cols);
 
     // 3) Initialisation + Fourier transform
-    plan = fftw_plan_dft_2d(rows, cols, spatial_repr, freq_repr,
-                            FFTW_FORWARD,
-                            FFTW_ESTIMATE); // This creates mem leak
+    plan = fftw_plan_dft_2d(rows, cols, spatial_repr, freq_repr, FFTW_FORWARD,
+                            FFTW_ESTIMATE);
     fftw_execute(plan);
 
     // 4) Memory free
     fftw_free(spatial_repr);
     fftw_destroy_plan(plan);
+    fftw_cleanup();
     return freq_repr;
 }
 
@@ -44,9 +44,8 @@ backward(int rows, int cols, fftw_complex* freq_repr) {
     spatial_repr = fftw_malloc(sizeof(fftw_complex) * rows * cols);
 
     // 2) Initialisation + Fourier transform
-    plan = fftw_plan_dft_2d(rows, cols, freq_repr, spatial_repr,
-                            FFTW_BACKWARD,
-                            FFTW_ESTIMATE); // This creates mem leak
+    plan = fftw_plan_dft_2d(rows, cols, freq_repr, spatial_repr, FFTW_BACKWARD,
+                            FFTW_ESTIMATE);
     fftw_execute(plan);
 
     // 3) Real part extracted
@@ -61,7 +60,7 @@ backward(int rows, int cols, fftw_complex* freq_repr) {
     // 4) Memory free
     fftw_free(spatial_repr);
     fftw_destroy_plan(plan);
-
+    fftw_cleanup();
     return g_img;
 }
 
@@ -73,10 +72,10 @@ void freq2spectra(int rows, int cols, fftw_complex* freq_repr, float* as,
         re = creal(*p_freq);
         im = cimag(*p_freq++);
         as[i] = sqrtf(re * re + im * im);
-        if(re != 0)
+        if (re != 0)
             ps[i] = atan2f(im, re);
         else
-            ps[i] = pi/2.;
+            ps[i] = pi / 2.;
     }
 }
 

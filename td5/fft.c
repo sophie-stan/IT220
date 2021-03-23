@@ -73,7 +73,8 @@ void freq2spectra(int rows, int cols, fftw_complex* freq_repr, float* as,
         re = creal(*p_freq);
         im = cimag(*p_freq++);
         as[i] = sqrtf(re * re + im * im);
-        ps[i] = atanf(im / re);
+        if(re != 0)
+            ps[i] = atan2f(im, re);
     }
 }
 

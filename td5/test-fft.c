@@ -57,7 +57,7 @@ test_forward_backward(char* name) {
 
     char* _name = basename(name);
     char dest[NAME_SIZE] = "FB-";
-    pnm_save(imd, PnmRawPpm, strcat(strcat(dest, _name), ".ppm"));
+    pnm_save(imd, PnmRawPpm, strcat(dest, _name));
 
     pnm_free(imd);
     pnm_free(ims);
@@ -108,7 +108,7 @@ test_reconstruction(char* name) {
 
     char* _name = basename(name);
     char dest[NAME_SIZE] = "FB-ASPS-";
-    pnm_save(imd, PnmRawPpm, strcat(strcat(dest, _name), ".ppm"));
+    pnm_save(imd, PnmRawPpm, strcat(dest, _name));
 
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {

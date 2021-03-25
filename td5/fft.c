@@ -4,19 +4,21 @@
 
 #include <fft.h>
 
-fftw_complex*
-forward(int rows, int cols, unsigned short* g_img) {
-    fftw_complex* spatial_repr, * p_spatial;
+fftw_complex* forward(int rows, int cols, unsigned short* g_img) {
+    fftw_complex* spatial_repr;
     fftw_complex* freq_repr;
-    unsigned short* p_gray;
     fftw_plan plan;
+
 
     // 1) Complex image construction
     spatial_repr = fftw_malloc(sizeof(fftw_complex) * rows * cols);
-    p_spatial = spatial_repr;
-    p_gray = g_img;
-    for (int i = 0; i < rows * cols; i++) {
-        (*p_spatial++) = (*p_gray++) + I * 0;
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            int tmp = (i + j) % 2 == 0 ? g_img[i * cols + j] : -g_img[i * cols +
+                                                                      j];
+            spatial_repr[i * cols + j] = tmp + I * 0;
+
+        }
     }
 
     // 2) Structure allocation aimed to receive the result of the transform
@@ -34,11 +36,10 @@ forward(int rows, int cols, unsigned short* g_img) {
     return freq_repr;
 }
 
-unsigned short*
-backward(int rows, int cols, fftw_complex* freq_repr) {
-    fftw_complex* spatial_repr, * p_spatial;
+unsigned short* backward(int rows, int cols, fftw_complex* freq_repr) {
+    fftw_complex* spatial_repr;
     fftw_plan plan;
-    unsigned short* g_img, * p_gray;
+    unsigned short* g_img;
 
     // 1) Structure allocation aimed to receive the result of the inv transform
     spatial_repr = fftw_malloc(sizeof(fftw_complex) * rows * cols);
@@ -50,12 +51,30 @@ backward(int rows, int cols, fftw_complex* freq_repr) {
 
     // 3) Real part extracted
     g_img = malloc(rows * cols * sizeof(unsigned short));
-    p_gray = g_img;
-    p_spatial = spatial_repr;
-    for (int i = 0; i < rows * cols; i++) {
-        (*p_gray++) = creal((*p_spatial++)) /
-                      (rows * cols); // fftw3 doesn't normalize
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            float real = creal(spatial_repr[i * cols + j]);
+            //printf("%f\n", real);
+
+            unsigned short tmp;
+            if (real < 0) {
+          //      float pos = -real;
+  //              printf("%f\n", pos);
+
+        //        tmp = (unsigned short) pos;
+//                printf("%d\n", tmp);
+
+            } else {
+                tmp = (unsigned short) real;
+                printf("%f\n", real);
+
+            }
+            g_img[i] = creal(real) / (rows * cols); // fftw3 doesn't normalize
+        }
     }
+
+
+
 
     // 4) Memory free
     fftw_free(spatial_repr);

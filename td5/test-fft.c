@@ -12,8 +12,9 @@
 #include <fft.h>
 #include <math.h>
 
-#define ERROR 5
+#define ERROR 10
 #define NAME_SIZE 50
+#define POW 0.15
 
 
 /**
@@ -129,8 +130,11 @@ void normalize(int size, float* tab) {
     }
     if (max == 0.0) max = 1.0;
     for (int i = 0; i < size; i++) {
+/*
         tab[i] = logf(tab[i]);
         tab[i] *= 255.0 / logf(max);
+*/
+        tab[i] = 255 * pow(tab[i] / max, POW);
     }
 }
 
@@ -138,8 +142,7 @@ void normalize(int size, float* tab) {
  * @brief test construction of magnitude and phase images in ppm files
  * @param char* name, the input image file name
  */
-void
-test_display(char* name) {
+void test_display(char* name) {
     fprintf(stderr, "test_display: ");
 
     // Loading inputs
@@ -150,7 +153,10 @@ test_display(char* name) {
     pnm imd_ps = pnm_new(cols, rows, PnmRawPpm); // Alloc
     unsigned short* g_ims = pnm_get_channel(ims, NULL, 0); // Alloc
 
-    // Computing result
+    // Centering
+    //translation(rows, cols, g_ims);
+
+    // Computing result with Fourier transform
     fftw_complex* freq_repr = forward(rows, cols, g_ims); // Alloc
     float* as = malloc(rows * cols * sizeof(float)); // Alloc
     float* ps = malloc(rows * cols * sizeof(float)); // Alloc
@@ -160,9 +166,9 @@ test_display(char* name) {
     normalize(rows * cols, as);
     normalize(rows * cols, ps);
 
-    // Conversion to int
-    unsigned short* _as = malloc(rows * cols * sizeof(unsigned short*));
-    unsigned short* _ps = malloc(rows * cols * sizeof(unsigned short*));
+    // Conversion to unsigned short
+    unsigned short* _as = malloc(rows * cols * sizeof(unsigned short));
+    unsigned short* _ps = malloc(rows * cols * sizeof(unsigned short));
     for (int i = 0; i < rows * cols; i++) {
         _as[i] = as[i];
         _ps[i] = ps[i];
@@ -205,68 +211,89 @@ void
 test_add_frequencies(char* name) {
     fprintf(stderr, "test_add_frequencies: ");
 
-    unsigned short* g_ims, * g_imd;
-    fftw_complex* freq_repr;
-    float* as, * ps;
-
-    pnm ims = pnm_load(name);
+    // Loading inputs
+    pnm ims = pnm_load(name); // Alloc
     int rows = pnm_get_height(ims);
     int cols = pnm_get_width(ims);
-    pnm imd = pnm_new(cols, rows, PnmRawPpm);
-    pnm imd_fas = pnm_new(cols, rows, PnmRawPpm); // amplitude
-    g_ims = pnm_get_channel(ims, NULL, 0);
+    pnm imd_freq = pnm_new(cols, rows, PnmRawPpm); // Alloc
+    pnm imd_as = pnm_new(cols, rows, PnmRawPpm); // Alloc
+    unsigned short* g_ims = pnm_get_channel(ims, NULL, 0); // Alloc
 
-    freq_repr = forward(rows, cols, g_ims);
-    as = malloc(rows * cols * sizeof(float));
-    ps = malloc(rows * cols * sizeof(float));
+    // Computing result with Fourier transform
+    fftw_complex* freq_repr = forward(rows, cols, g_ims); // Alloc
+    float* as = malloc(rows * cols * sizeof(float)); // Alloc
+    float* ps = malloc(rows * cols * sizeof(float)); // Alloc
     freq2spectra(rows, cols, freq_repr, as, ps);
 
-    // Operation on the amplitude and phase
-    float* p_as, * p_ps;
+    // Operation on the amplitude
     float max = 0;
-    p_as = as;
-    p_ps = ps;
-    while (*p_as++) {
-        max = *p_as > max ? *p_as : max;
+    for (int i = 0; i < rows * cols; i++) {
+        max = as[i] > max ? as[i] : max;
     }
+
     //printf("%f\n", max);
     int mid_rows = rows / 2;
     int mid_cols = cols / 2;
-    as[cols * mid_rows - mid_cols] = 2 * 0.25 * max;
+    as[cols * (mid_rows - 8) - mid_cols] = 0.25 * max;
     as[cols * (mid_rows + 8) - mid_cols] = 0.25 * max;
-    as[cols * mid_rows - mid_cols + 8] = 0.25 * max;
+
+
+
+    float* copy_of_as = malloc(cols * rows *sizeof(float));
+    memcpy(copy_of_as, as, cols * rows * sizeof(float));
 
     spectra2freq(rows, cols, as, ps, freq_repr);
-    g_imd = backward(rows, cols, freq_repr);
+    unsigned short* g_imd = backward(rows, cols, freq_repr);
 
+
+
+
+
+
+    // Normalization of the amplitude
+    normalize(rows * cols, copy_of_as);
+    // Conversion to unsigned short
+    unsigned short* _as = malloc(rows * cols * sizeof(unsigned short));
+    for (int i = 0; i < rows * cols; i++) {
+        _as[i] = copy_of_as[i];
+    }
+    // Filling results
     for (int k = 0; k < 3; k++) {
-        pnm_set_channel(imd, g_imd, k);
+        pnm_set_channel(imd_as, _as, k);
     }
 
-    fprintf(stderr, "OK\n");
 
+
+
+
+
+
+    // Saving results
     char* _name = basename(name);
-    char freq[NAME_SIZE] = "FREQ-";
-    char fas[NAME_SIZE] = "FAS-";
-    pnm_save(imd, PnmRawPpm, strcat(freq, _name));
-    pnm_save(imd, PnmRawPpm, strcat(fas, _name));
+    char freq_name[NAME_SIZE] = "FREQ-";
+    char as_name[NAME_SIZE] = "FAS-";
+    pnm_save(imd_freq, PnmRawPpm, strcat(freq_name, _name));
+    pnm_save(imd_as, PnmRawPpm, strcat(as_name, _name));
 
-    pnm_free(imd);
-    pnm_free(imd_fas);
+    // Memory free
+    pnm_free(imd_freq);
+    pnm_free(imd_as);
     pnm_free(ims);
     free(g_ims);
     free(g_imd);
     free(as);
+    free(copy_of_as);
+    //free(_as);
     free(ps);
     fftw_free(freq_repr);
 }
 
 void
 run(char* name) {
-    //test_forward_backward(name);
-    //test_reconstruction(name);
+    test_forward_backward(name);
+    test_reconstruction(name);
     test_display(name);
-    // test_add_frequencies(name);
+    test_add_frequencies(name);
 }
 
 void

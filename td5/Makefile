@@ -15,7 +15,7 @@ test-fft: test-fft.o fft.o
 test: test-fft
 	./test-fft ../data/lena-gray.ppm
 show: test
-	pvisu AS-lena-gray.ppm && pvisu PS-lena-gray.ppm
+	pvisu FREQ-lena-gray.ppm
 
 .PHONY: clean 
 clean:

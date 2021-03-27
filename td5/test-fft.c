@@ -15,6 +15,8 @@
 #define ERROR 10 // error allowed between lena before and after transform
 #define NAME_SIZE 50 // image's name
 #define POW 0.15  // 0.1 works too
+#define FREQ 8 // frequency added
+#define RATIO 0.2 // RATIO * max_as is the amplitude of the frequency added
 
 
 /**
@@ -41,7 +43,6 @@ void fill_and_compare(unsigned short* g_imd, pnm imd, pnm ims) {
             }
         }
     }
-    fprintf(stderr, "OK\n");
 }
 
 /**
@@ -76,6 +77,8 @@ void test_forward_backward(char* name) {
     free(g_ims);
     free(g_imd);
     fftw_free(freq_repr);
+
+    fprintf(stderr, "OK\n");
 }
 
 /**
@@ -116,6 +119,8 @@ void test_reconstruction(char* name) {
     fftw_free(freq_repr);
     free(as);
     free(ps);
+
+    fprintf(stderr, "OK\n");
 }
 
 /**
@@ -168,8 +173,8 @@ void test_display(char* name) {
     unsigned short* _as = malloc(rows * cols * sizeof(unsigned short));
     unsigned short* _ps = malloc(rows * cols * sizeof(unsigned short));
     for (int i = 0; i < rows * cols; i++) {
-        _as[i] = (unsigned short) as[i];
-        _ps[i] = (unsigned short) ps[i];
+        _as[i] = as[i];
+        _ps[i] = ps[i];
     }
 
     // Filling the pnm images as and ps with the results
@@ -209,62 +214,52 @@ void test_add_frequencies(char* name) {
     fprintf(stderr, "test_add_frequencies: ");
 
     // Loading inputs
-    pnm ims = pnm_load(name); // Alloc
+    pnm ims = pnm_load(name);
     int rows = pnm_get_height(ims);
     int cols = pnm_get_width(ims);
-    pnm imd_freq = pnm_new(cols, rows, PnmRawPpm); // Alloc
-    pnm imd_as = pnm_new(cols, rows, PnmRawPpm); // Alloc
-    unsigned short* g_ims = pnm_get_channel(ims, NULL, 0); // Alloc
+    pnm imd_freq = pnm_new(cols, rows, PnmRawPpm);
+    pnm imd_as = pnm_new(cols, rows, PnmRawPpm);
+    unsigned short* g_ims = pnm_get_channel(ims, NULL, 0);
 
     // Computing result with Fourier transform
-    fftw_complex* freq_repr = forward(rows, cols, g_ims); // Alloc
-    float* as = malloc(rows * cols * sizeof(float)); // Alloc
-    float* ps = malloc(rows * cols * sizeof(float)); // Alloc
+    fftw_complex* freq_repr = forward(rows, cols, g_ims);
+    float* as = malloc(rows * cols * sizeof(float));
+    float* ps = malloc(rows * cols * sizeof(float));
     freq2spectra(rows, cols, freq_repr, as, ps);
 
-    // Operation on the amplitude
+    /** Operation on the amplitude **/
     float max = 0;
     for (int i = 0; i < rows * cols; i++) {
         max = as[i] > max ? as[i] : max;
     }
-
-    //printf("%f\n", max);
     int mid_rows = rows / 2;
     int mid_cols = cols / 2;
-    as[cols * (mid_rows - 8) - mid_cols] = 0.25 * max;
-    as[cols * (mid_rows + 8) - mid_cols] = 0.25 * max;
 
+    // Adding vertical frequency of 0.25 * max amplitude
+    as[cols * (mid_rows - FREQ + 1) - mid_cols] = RATIO * max;
+    as[cols * (mid_rows + FREQ + 1) - mid_cols] = RATIO * max;
 
-    float* copy_of_as = malloc(cols * rows * sizeof(float));
-    memcpy(copy_of_as, as, cols * rows * sizeof(float));
+    // Adding horizontal frequency of 0.25 * max amplitude
+    as[cols * (mid_rows + 1) - mid_cols - FREQ] = RATIO * max;
+    as[cols * (mid_rows + 1) - mid_cols + FREQ] = RATIO * max;
 
+    /** Back to home **/
     spectra2freq(rows, cols, as, ps, freq_repr);
     unsigned short* g_imd = backward(rows, cols, freq_repr);
 
-
-
-
-
-
-    // Normalization of the amplitude
-    normalize(rows * cols, copy_of_as);
-
-
-    // Conversion to unsigned short
+    // Normalization and conversion to unsigned short of the amplitude
+    // (in order to be printed)
+    normalize(rows * cols, as);
     unsigned short* _as = malloc(rows * cols * sizeof(unsigned short));
     for (int i = 0; i < rows * cols; i++) {
-        _as[i] = copy_of_as[i];
+        _as[i] = as[i];
     }
+
     // Filling results
     for (int k = 0; k < 3; k++) {
         pnm_set_channel(imd_as, _as, k);
+        pnm_set_channel(imd_freq, g_imd, k);
     }
-
-
-
-
-
-
 
     // Saving results
     char* _name = basename(name);
@@ -280,17 +275,18 @@ void test_add_frequencies(char* name) {
     free(g_ims);
     free(g_imd);
     free(as);
-    free(copy_of_as);
-    //free(_as);
     free(ps);
+    free(_as);
     fftw_free(freq_repr);
+
+    fprintf(stderr, "OK\n");
 }
 
 void
 run(char* name) {
-    test_forward_backward(name);
-    test_reconstruction(name);
-    test_display(name);
+    //test_forward_backward(name);
+    //test_reconstruction(name);
+    //test_display(name);
     test_add_frequencies(name);
 }
 

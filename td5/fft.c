@@ -10,12 +10,9 @@ fftw_complex* forward(int rows, int cols, unsigned short* g_img) {
     fftw_complex* spatial_repr = fftw_malloc(sizeof(fftw_complex) * rows * cols);
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            /* The following code works only for test-display (we need a translation)
-             *
-             * int tmp = (i + j) % 2 == 0 ? g_img[i * cols + j] : -g_img[i * cols +
+            int tmp = (i + j) % 2 == 0 ? g_img[i * cols + j] : -g_img[i * cols +
                                                                       j];
-            spatial_repr[i * cols + j] = tmp + I * 0;*/
-            spatial_repr[i * cols + j] = g_img[i * cols + j] + I * 0;
+            spatial_repr[i * cols + j] = tmp + I * 0;
         }
     }
 
@@ -23,8 +20,9 @@ fftw_complex* forward(int rows, int cols, unsigned short* g_img) {
     fftw_complex* freq_repr = fftw_malloc(sizeof(fftw_complex) * rows * cols);
 
     // 3) Initialisation + Fourier transform
-    fftw_plan plan = fftw_plan_dft_2d(rows, cols, spatial_repr, freq_repr, FFTW_FORWARD,
-                            FFTW_ESTIMATE);
+    fftw_plan plan = fftw_plan_dft_2d(rows, cols, spatial_repr, freq_repr,
+                                      FFTW_FORWARD,
+                                      FFTW_ESTIMATE);
     fftw_execute(plan);
 
     // 4) Memory free
@@ -37,30 +35,26 @@ fftw_complex* forward(int rows, int cols, unsigned short* g_img) {
 unsigned short* backward(int rows, int cols, fftw_complex* freq_repr) {
 
     // 1) Structure allocation aimed to receive the result of the inv transform
-    fftw_complex* spatial_repr = fftw_malloc(sizeof(fftw_complex) * rows * cols);
+    fftw_complex* spatial_repr = fftw_malloc(
+            sizeof(fftw_complex) * rows * cols);
 
     // 2) Initialisation + Fourier transform
-    fftw_plan plan = fftw_plan_dft_2d(rows, cols, freq_repr, spatial_repr, FFTW_BACKWARD,
-                            FFTW_ESTIMATE);
+    fftw_plan plan = fftw_plan_dft_2d(rows, cols, freq_repr, spatial_repr,
+                                      FFTW_BACKWARD,
+                                      FFTW_ESTIMATE);
     fftw_execute(plan);
-
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-            // Problem with the values of spatial_repr
-            // (way too big to fit in an unsigned short...)
-            spatial_repr[i * cols + j] = creal(spatial_repr[i * cols + j]);
-        }
-    }
 
     // 3) Real part extracted
     unsigned short* g_img = malloc(rows * cols * sizeof(unsigned short));
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
-            //printf("%f\n", real[i * cols + j]);
-            unsigned short tmp = (unsigned short) real[i * cols + j];
-            //printf("%hu\n", tmp);
-            g_img[i * cols + j] =
-                    tmp / (rows * cols); // fftw3 doesn't normalize
+
+            // Normalization of the result (fftw3_execute doesn't normalize)
+            float tmp = creal(spatial_repr[i * cols + j]) / (rows * cols);
+            // Positivity of the result (Translation back)
+            tmp = tmp < 0 ? -tmp : tmp;
+            // Conversion of floats to unsigned short
+            g_img[i * cols + j] = (unsigned short) tmp;
         }
     }
 

@@ -13,9 +13,9 @@ all: $(BIN)
 padding: fft.o
 
 test: padding copy filter
-	./filter 15 box ../data/lena-small-rect.ppm a.ppm && pvisu a.ppm &&\
-	./filter 15 tent ../data/lena-small-rect.ppm b.ppm && pvisu b.ppm &&\
-	./filter 15 bell ../data/lena-small-rect.ppm c.ppm && pvisu c.ppm &&\
+	./filter 15 box ../data/cameraman.ppm a.ppm && pvisu a.ppm
+	./filter 15 tent ../data/lena-small-rect.ppm b.ppm && pvisu b.ppm
+	./filter 15 bell ../data/lena-small-rect.ppm c.ppm && pvisu c.ppm
 	./filter 15 mitch ../data/lena-small-rect.ppm d.ppm && pvisu d.ppm
 
 

@@ -31,26 +31,4 @@ extern fftw_complex
 extern unsigned short 
 *backward(int normalisation, int rows, int cols, fftw_complex *freq_repr);
 
-/**
- * @brief compute amplitude and phase spectrum from frequency domain
- * @param int rows: the input complex height
- * @param int cols: the input complex width
- * @param fft_complex* freq_repr: the frequency complex input 
- * @param float* as: the amplitude spectrum output
- * @param float* ps: the phase spectrum output
- */
-extern void 
-freq2spectra(int rows, int cols, fftw_complex *freq_repr, float *as, float *ps);
-
-/**
- * @brief compute the complex frequency from amplitude and phase spectrum
- * @param int rows: the input complex height
- * @param int cols: the input cemplex width
- * @param float* as: the amplitude spectrum input
- * @param float* ps: the phase spectrum input
- * @param fft_complex* freq_repr: the frequency complex output
- */
-extern void 
-spectra2freq(int rows, int cols, float* as, float* ps, fftw_complex* freq_repr);
-
 #endif /* FFT_H */

@@ -11,6 +11,7 @@
 #include <pnm.h>
 
 void process(char* factor, char* ims_name, char* imd_name) {
+    // Loading inputs    
     pnm ims = pnm_load(ims_name);
     int rows_ims = pnm_get_height(ims);
     int cols_ims = pnm_get_width(ims);
@@ -21,6 +22,8 @@ void process(char* factor, char* ims_name, char* imd_name) {
 
     pnm imd = pnm_new(cols_imd, rows_imd, PnmRawPpm);
 
+
+    // Computing the zoom result
     for (int i = 0; i < rows_ims; i++) {
         for (int j = 0; j < cols_ims; j++) {
             for (int k = 0; k < 3; k++) {
@@ -33,8 +36,10 @@ void process(char* factor, char* ims_name, char* imd_name) {
             }
         }
     }
-
+    // Saving results
     pnm_save(imd, PnmRawPpm, imd_name);
+    
+    // Memory free
     pnm_free(ims);
     pnm_free(imd);
 }

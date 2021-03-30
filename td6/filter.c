@@ -37,18 +37,20 @@ float mitch(float x) {
         return 0.0;
 }
 
-void algo(pnm ims, pnm imd, int factor,
-          char* filter_name, int direction,
-          int max, int cols, int rows) {
+// Computes the zoom result in one direction
+void one_side(pnm ims, pnm imd, int factor,
+              char* filter_name, int direction,
+              int max, int cols, int rows) {
 
-    float new_ind;
+    float new_ind, component, S, WF;
 
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
             if (direction == 0) new_ind = (float) j / factor;
             else if (direction == 1) new_ind = (float) i / factor;
 
-            float WF = 0;
+            WF = 0.0;
+
             if (strcmp(filter_name, "box") == 0)
                 WF = 0.5;
             else if (strcmp(filter_name, "tent") == 0)
@@ -64,7 +66,7 @@ void algo(pnm ims, pnm imd, int factor,
             int l_int = floor(left);
             int r_int = floor(right);
 
-            float S = 0.0;
+            S = 0.0;
 
             for (int k = l_int; k <= r_int; k++) {
 
@@ -79,23 +81,19 @@ void algo(pnm ims, pnm imd, int factor,
                     h = mitch((float) k - new_ind);
 
                 if (direction == 0) {
-                    if (k < 0) {
-                        S += pnm_get_component(ims, i, 0, 0) * h;
-                    } else if (k >= max) {
-                        S += pnm_get_component(ims, i, max - 1, 0) * h;
-                    } else {
-                        S += pnm_get_component(ims, i, k, 0) * h;
-                    }
+                    if (k < 0) component = pnm_get_component(ims, i, 0, 0);
+                    else if (k >= max)
+                        component = pnm_get_component(ims, i, max - 1, 0);
+                    else component = pnm_get_component(ims, i, k, 0);
                 } else if (direction == 1) {
-                    if (k < 0) {
-                        S += pnm_get_component(ims, 0, j, 0) * h;
-                    } else if (k >= max) {
-                        S += pnm_get_component(ims, max - 1, j, 0) * h;
-                    } else {
-                        S += pnm_get_component(ims, k, j, 0) * h;
-                    }
+                    if (k < 0) component = pnm_get_component(ims, 0, j, 0);
+                    else if (k >= max)
+                        component = pnm_get_component(ims, max - 1, j, 0);
+                    else component = pnm_get_component(ims, k, j, 0);
                 }
+                S += component * h;
             }
+
             for (int c = 0; c < 3; c++) {
                 pnm_set_component(imd, i, j, c, (unsigned short) S);
             }
@@ -103,7 +101,13 @@ void algo(pnm ims, pnm imd, int factor,
     }
 }
 
-void process(int factor, char* filter_name, char* ims_name, char* imd_name) {
+void process(char* factor_name, char* filter_name,
+             char* ims_name, char* imd_name) {
+
+    // Calculating factor
+    int factor = atoi(factor_name);
+
+    // Loading inputs
     pnm ims = pnm_load(ims_name);
     int cols = pnm_get_width(ims);
     int rows = pnm_get_height(ims);
@@ -115,12 +119,15 @@ void process(int factor, char* filter_name, char* ims_name, char* imd_name) {
     pnm imd = pnm_new(new_cols, new_rows, PnmRawPpm);
 
     // Columns interpolation
-    algo(ims, imt, factor, filter_name, 0, cols, new_cols, rows);
+    one_side(ims, imt, factor, filter_name, 0, cols, new_cols, rows);
 
     // Rows interpolation
-    algo(imt, imd, factor, filter_name, 1, rows, new_cols, new_rows);
+    one_side(imt, imd, factor, filter_name, 1, rows, new_cols, new_rows);
 
+    // Saving results
     pnm_save(imd, PnmRawPpm, imd_name);
+
+    // Memory free
     pnm_free(ims);
     pnm_free(imt);
     pnm_free(imd);
@@ -135,7 +142,6 @@ void usage(char* s) {
 
 int main(int argc, char* argv[]) {
     if (argc != param + 1) usage(argv[0]);
-    int factor = atoi(argv[1]);
-    process(factor, argv[2], argv[3], argv[4]);
+    process(argv[1], argv[2], argv[3], argv[4]);
     return EXIT_SUCCESS;
 }

@@ -13,8 +13,9 @@ all: $(BIN)
 padding: fft.o
 
 test: padding
-	./padding 10 ../data/cameraman.ppm a.ppm && pvisu a.ppm\
-	&& ./padding 15 ../data/cameraman.ppm b.ppm && pvisu b.ppm
+	./padding 10 ../data/lena-small-rect.ppm a.ppm && pvisu a.ppm\
+	&& ./padding 15 ../data/lena-small-rect.ppm b.ppm && pvisu b.ppm
+
 .PHONY: clean cleanall
 clean:
 	$(RM) $(BIN) *.o *.ppm
